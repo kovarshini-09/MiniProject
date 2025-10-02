@@ -1,0 +1,72 @@
+/* Card + Calendar integration */
+.dashboard-theme .react-calendar {
+  border: none !important;
+  width: 100% !important;
+  background: transparent !important; /* match card bg */
+  font-family: "Segoe UI", sans-serif;
+  font-size: 0.8rem;   /* smaller fonts to fit */
+  box-shadow: none;
+}
+
+/* Calendar navigation (Month/Year + arrows) */
+.dashboard-theme .react-calendar__navigation {
+  margin-bottom: 8px;
+}
+
+.dashboard-theme .react-calendar__navigation button {
+  color: #800000;  /* maroon */
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  padding: 4px 6px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.dashboard-theme .react-calendar__navigation button:hover {
+  background: #fcecec; /* soft maroon tint */
+  color: #a83232;
+}
+
+/* Weekdays (Mon, Tue, etc.) */
+.dashboard-theme .react-calendar__month-view__weekdays {
+  color: #800000;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  margin-bottom: 4px;
+}
+
+/* Day tiles */
+.dashboard-theme .react-calendar__tile {
+  border-radius: 6px;
+  padding: 6px 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Hover effect like card hover */
+.dashboard-theme .react-calendar__tile:hover {
+  background: #fcecec;
+  color: #800000;
+}
+
+/* Current day */
+.dashboard-theme .react-calendar__tile--now {
+  background: #f6d6d6 !important;
+  color: #800000 !important;
+  font-weight: bold;
+  border-radius: 6px;
+}
+
+/* Selected day */
+.dashboard-theme .react-calendar__tile--active {
+  background: #800000 !important;
+  color: #fff !important;
+  border-radius: 6px;
+  font-weight: bold;
+}
+

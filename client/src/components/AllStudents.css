@@ -1,0 +1,63 @@
+/* General Page Layout */
+body {
+  background-color: #f0f2f5;
+}
+
+.min-vh-100 {
+  min-height: 100vh;
+}
+
+.bg-light {
+  background-color: #f0f2f5 !important;
+}
+
+/* Page Header Chip */
+.page-chip {
+  background-color: white;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-weight: 500;
+  color: #343a40;
+}
+
+/* Search and All Button */
+.search-input {
+  max-width: 200px;
+  border: 2px solid #f04b4b !important;
+  border-radius: 50rem !important;
+  padding: 5px 15px;
+}
+
+.rounded-pill {
+  border-radius: 50rem !important;
+}
+
+/* Student Cards */
+.card.shadow-sm.border-0 {
+  box-shadow: 0 .125rem .25rem rgba(0,0,0,.075)!important;
+}
+
+.student-card {
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.student-img {
+  width: 80px;
+  height: 80px;
+}
+
+.add-card {
+  border: 2px dashed #aaa;
+  border-radius: 12px;
+  cursor: pointer;
+  height: 180px;
+}
+
+.add-icon {
+  font-size: 2rem;
+  background: #f1f1f1;
+  border-radius: 50%;
+  padding: 12px;
+}

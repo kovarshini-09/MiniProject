@@ -1,0 +1,80 @@
+.add-class-wrapper {
+  width: 100%;
+}
+
+.page-chip {
+  display: inline-block;
+  background: #ffffff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.custom-card {
+  border-radius: 15px;
+  width: 560px;
+  max-width: calc(100% - 48px);
+  border: 1px solid #eaeaea;
+}
+
+/* Floating label */
+.custom-label {
+  position: absolute;
+  top: -13px;
+  left: 50px;
+  background: #ff6161;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 4px 16px;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+/* spacing */
+.form-group {
+  margin-top: 28px;
+  margin-bottom: 26px;
+}
+
+/* ✅ Rectangular red box */
+.red-box {
+  height: 48px;
+  font-size: 0.95rem;
+  border-radius: 8px !important;
+  border: 2px solid #ff6b6b !important;
+  padding-right: 40px;
+  text-align: center;
+}
+
+.red-box:focus {
+  box-shadow: none;
+  border-color: #ff6b6b;
+}
+
+/* ✅ Icon wrapper */
+.input-icon-wrapper {
+  position: relative;
+}
+
+.calendar-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ff6b6b;
+  font-size: 1.2rem;
+  pointer-events: none;
+}
+
+.custom-submit {
+  background: #e9b72d;
+  color: #000;
+  border: none;
+  padding: 6px 22px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
