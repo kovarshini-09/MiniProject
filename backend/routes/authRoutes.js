@@ -1,14 +1,23 @@
-const express = require("express");
-const { login, studentLogin, teacherLogin } = require("../controllers/authController");
+const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const Admin = require('../models/Admin');
+const Student = require('../models/Student');
+const Teacher = require('../models/Teacher');
 
-// Admin login
-router.post("/login", login);
+router.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    let user = await Admin.findOne({ email }) || await Student.findOne({ email }) || await Teacher.findOne({ email });
 
-// Student login
-router.post("/student-login", studentLogin);
+    if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
-// Teacher login
-router.post("/teacher-login", teacherLogin);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
+
+    const token = jwt.sign({ id: user._id, role: user.role || (user instanceof Admin ? 'admin' : user instanceof Student ? 'student' : 'teacher') }, 'secretkey', { expiresIn: '1d' });
+
+    res.json({ token, role: user.role || (user instanceof Admin ? 'admin' : user instanceof Student ? 'student' : 'teacher') });
+});
 
 module.exports = router;

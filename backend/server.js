@@ -1,27 +1,20 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const cors = require("cors");
-const connectDB = require("./config/db");
+const express = require('express');
+const connectDB = require('./config/db');
+const cors = require('cors');
+const adminRoutes = require('./routes/adminRoutes');
+const authRoutes = require('./routes/authRoutes');
+const studentRoutes = require('./routes/studentRoutes');
+const teacherRoutes = require('./routes/teacherRoutes');
 
-dotenv.config();
+connectDB();
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect MongoDB
-connectDB().then(() => {
-  console.log("MongoDB connected");
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/teachers', teacherRoutes);
 
-  // Routes
-  app.use("/api/auth", require("./routes/authRoutes"));
-  app.use("/api/students", require("./routes/studentRoutes"));
-  app.use("/api/teachers", require("./routes/teacherRoutes"));
-  app.use("/api/classes", require("./routes/classRoutes"));
-
-  // 404 handler
-  app.use((req, res) => res.status(404).json({ message: "Route not found" }));
-
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-})
-.catch(err => console.error("MongoDB connection error:", err));
+const PORT = 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -3,22 +3,28 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./Attendance.css";
 
-const CustomDateInput = forwardRef(({ value, onClick, placeholder }, ref) => {
-  return (
-    <div className="input-icon-wrapper">
-      <input
-        type="text"
-        className="red-box custom-date-input"
-        onClick={onClick}
-        ref={ref}
-        value={value || ""}
-        placeholder={placeholder || "dd-mm-yyyy"}
-        readOnly
-      />
-      <i className="bi bi-calendar3 calendar-icon" onClick={onClick} />
-    </div>
-  );
-});
+const CustomDateInput = forwardRef(({ value, onClick, placeholder }, ref) => (
+  <div className="input-icon-wrapper">
+    <input
+      type="text"
+      className="red-box custom-date-input"
+      onClick={onClick}
+      ref={ref}
+      value={value || ""}
+      placeholder={placeholder || "dd-mm-yyyy"}
+      readOnly
+    />
+    <i className="bi bi-calendar3 calendar-icon" onClick={onClick} />
+  </div>
+));
+
+const classOptions = [
+  "6A","6B","6C",
+  "7A","7B","7C",
+  "8A","8B","8C",
+  "9A","9B","9C",
+  "10A","10B","10C"
+];
 
 function Attendance() {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -38,7 +44,6 @@ function Attendance() {
           <h5 className="form-title">Add / Update Attendance</h5>
 
           <form onSubmit={handleSubmit}>
-            {/* Date Picker */}
             <div className="form-group">
               <span className="custom-label">Date</span>
               <DatePicker
@@ -51,7 +56,6 @@ function Attendance() {
               />
             </div>
 
-            {/* Class Select */}
             <div className="form-group">
               <span className="custom-label">Select Class</span>
               <select
@@ -59,17 +63,13 @@ function Attendance() {
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
               >
-                <option value="">Choose...</option>
-                <option value="Class 6">Class 6</option>
-                <option value="Class 7">Class 7</option>
-                <option value="Class 8">Class 8</option>
+                <option value="">Choose Class</option>
+                {classOptions.map(cls => <option key={cls} value={cls}>{cls}</option>)}
               </select>
             </div>
 
             <div className="form-submit-wrapper">
-              <button type="submit" className="custom-submit">
-                Submit
-              </button>
+              <button type="submit" className="custom-submit">Submit</button>
             </div>
           </form>
         </div>

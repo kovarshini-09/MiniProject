@@ -1,26 +1,21 @@
-const jwt = require("jsonwebtoken");
-const Admin = require("../models/Admin");
-const Teacher = require("../models/Teacher");
-const Student = require("../models/Student");
+const jwt = require('jsonwebtoken');
 
-exports.protect = (allowedRoles) => async (req, res, next) => {
-  let token;
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+const authMiddleware = (roles = []) => {
+  return (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No token provided' });
+
     try {
-      token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || "myscret123");
-      let user = await Admin.findById(decoded.id) || await Teacher.findById(decoded.id) || await Student.findById(decoded.id);
-
-      if (!user) return res.status(401).json({ message: "Not authorized" });
-
-      if (!allowedRoles.includes(user.role)) return res.status(403).json({ message: "Forbidden" });
-
-      req.user = user;
+      const decoded = jwt.verify(token, 'secretkey');
+      if (roles.length && !roles.includes(decoded.role)) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+      req.user = decoded;
       next();
     } catch (err) {
-      res.status(401).json({ message: "Token invalid" });
+      return res.status(401).json({ message: 'Token is not valid' });
     }
-  } else {
-    res.status(401).json({ message: "No token" });
-  }
+  };
 };
+
+module.exports = authMiddleware;

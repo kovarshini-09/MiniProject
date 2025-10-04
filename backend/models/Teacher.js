@@ -1,34 +1,19 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
-
+const mongoose = require('mongoose');
 const teacherSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }, // added for login
-  mobileNo: { type: String, required: true },
-  role: { type: String, required: true },
-  picture: { type: String },
-  dateOfJoining: { type: Date },
-  salary: { type: Number },
-  fatherName: { type: String },
-  gender: { type: String },
-  experience: { type: String },
-  education: { type: String },
-  bloodGroup: { type: String },
-  address: { type: String },
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    mobileNumber: { type: String, required: true },
+    subject: { type: String, required: true },
+    dob: { type: Date, required: true },
+    gender: { type: String, required: true },
+    fatherName: { type: String },
+    motherName: { type: String },
+    picture: { type: String },
+    monthlySalary: { type: Number },
+    experience: { type: Number },
+    education: { type: String },
+    bloodGroup: { type: String },
+    address: { type: String },
+    password: { type: String, required: true },
 });
-
-// Hash password before save
-teacherSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
-
-// Compare password
-teacherSchema.methods.comparePassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
-
-module.exports = mongoose.model("Teacher", teacherSchema);
+module.exports = mongoose.model('Teacher', teacherSchema);

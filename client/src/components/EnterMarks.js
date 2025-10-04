@@ -77,8 +77,22 @@ function EnterMarks() {
             style={{ border: "2px solid #e63946", borderRadius: "0px" }}
           >
             <option value="">Select Class</option>
-            <option value="10">Class 10</option>
-            <option value="9">Class 9</option>
+            <option value="10">Class 6A</option>
+            <option value="9">Class 6B</option>
+            <option value="10">Class 6C</option>
+            <option value="9">Class 7A</option>
+            <option value="10">Class 7B</option>
+            <option value="9">Class 7C</option>
+            <option value="10">Class 8A</option>
+            <option value="9">Class 8B</option>
+            <option value="10">Class 8C</option>
+            <option value="9">Class 9A</option>
+            <option value="10">Class 9B</option>
+            <option value="9">Class 9C</option>
+            <option value="10">Class 10A</option>
+            <option value="10">Class 10B</option>
+            <option value="10">Class 10C</option>
+
           </select>
         </div>
       </div>
