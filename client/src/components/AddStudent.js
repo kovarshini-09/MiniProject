@@ -27,11 +27,13 @@ const AddStudent = () => {
       .get("http://localhost:5000/api/admin/students", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
-      .then((res) => setStudents(res.data))
+      .then((res) => {
+        setStudents(res.data);
+      })
       .catch((err) => console.error(err));
   }, []);
 
-  // Handle selecting student from dropdown
+  // Handle selecting a student from dropdown
   const handleSelect = (e) => {
     const id = e.target.value;
     setSelectedStudentId(id);
@@ -51,6 +53,20 @@ const AddStudent = () => {
         address: selected.address,
         fees: selected.fees,
       });
+    } else {
+      setStudentData({
+        name: "",
+        regNo: "",
+        class: "",
+        dob: "",
+        gender: "",
+        fatherName: "",
+        motherName: "",
+        previousSchool: "",
+        identificationMark: "",
+        address: "",
+        fees: "",
+      });
     }
   };
 
@@ -61,8 +77,16 @@ const AddStudent = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (selectedStudentId) {
-      alert("Student updated successfully!");
-      // PUT request to update student can go here
+      axios
+        .put(
+          `http://localhost:5000/api/admin/students/${selectedStudentId}`,
+          studentData,
+          {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          }
+        )
+        .then(() => alert("Student updated successfully!"))
+        .catch((err) => console.error(err));
     } else {
       axios
         .post("http://localhost:5000/api/admin/students", studentData, {
@@ -75,18 +99,16 @@ const AddStudent = () => {
 
   return (
     <Container fluid className="p-4 bg-light min-vh-100">
-      {/* Page Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div className="page-chip">Students - Add Student</div>
       </div>
 
-      {/* Form Section */}
       <div className="employee-form-container p-4">
-        {/* Basic Information */}
         <h5 className="form-section-header">Basic Information</h5>
         <hr className="form-hr" />
 
         <Row className="g-3 mb-4">
+          {/* Dropdown for students */}
           <Col md={4}>
             <label className="field-label required">Select Student</label>
             <Form.Select
@@ -97,7 +119,7 @@ const AddStudent = () => {
               <option value="">Select Student</option>
               {students.map((s) => (
                 <option key={s._id} value={s._id}>
-                  {s.name}
+                  {s.name} ({s.regNo})
                 </option>
               ))}
             </Form.Select>
@@ -107,8 +129,8 @@ const AddStudent = () => {
             <label className="field-label required">Register No</label>
             <Form.Control
               type="text"
-              className="custom-input"
               name="regNo"
+              className="custom-input"
               value={studentData.regNo}
               onChange={handleChange}
             />
@@ -118,24 +140,19 @@ const AddStudent = () => {
             <label className="field-label required">Class</label>
             <Form.Control
               type="text"
-              className="custom-input"
               name="class"
+              className="custom-input"
               value={studentData.class}
               onChange={handleChange}
             />
           </Col>
 
           <Col md={4}>
-            <label className="field-label optional">Picture</label>
-            <Form.Control type="file" className="custom-input" />
-          </Col>
-
-          <Col md={4}>
-            <label className="field-label required">Date of Admission</label>
+            <label className="field-label required">Date of Birth</label>
             <Form.Control
               type="date"
-              className="custom-input"
               name="dob"
+              className="custom-input"
               value={studentData.dob}
               onChange={handleChange}
             />
@@ -145,15 +162,14 @@ const AddStudent = () => {
             <label className="field-label required">Fees</label>
             <Form.Control
               type="number"
-              className="custom-input"
               name="fees"
+              className="custom-input"
               value={studentData.fees}
               onChange={handleChange}
             />
           </Col>
         </Row>
 
-        {/* Other Information */}
         <h5 className="form-section-header">Other Information</h5>
         <hr className="form-hr" />
 
@@ -162,8 +178,8 @@ const AddStudent = () => {
             <label className="field-label optional">Gender</label>
             <Form.Control
               type="text"
-              className="custom-input"
               name="gender"
+              className="custom-input"
               value={studentData.gender}
               onChange={handleChange}
             />
@@ -173,8 +189,8 @@ const AddStudent = () => {
             <label className="field-label optional">Previous School</label>
             <Form.Control
               type="text"
-              className="custom-input"
               name="previousSchool"
+              className="custom-input"
               value={studentData.previousSchool}
               onChange={handleChange}
             />
@@ -184,8 +200,8 @@ const AddStudent = () => {
             <label className="field-label optional">Identification Mark</label>
             <Form.Control
               type="text"
-              className="custom-input"
               name="identificationMark"
+              className="custom-input"
               value={studentData.identificationMark}
               onChange={handleChange}
             />
@@ -195,8 +211,8 @@ const AddStudent = () => {
             <label className="field-label optional">Father Name</label>
             <Form.Control
               type="text"
-              className="custom-input"
               name="fatherName"
+              className="custom-input"
               value={studentData.fatherName}
               onChange={handleChange}
             />
@@ -206,8 +222,8 @@ const AddStudent = () => {
             <label className="field-label optional">Mother Name</label>
             <Form.Control
               type="text"
-              className="custom-input"
               name="motherName"
+              className="custom-input"
               value={studentData.motherName}
               onChange={handleChange}
             />
@@ -218,8 +234,8 @@ const AddStudent = () => {
             <Form.Control
               as="textarea"
               rows={3}
-              className="custom-input-textarea"
               name="address"
+              className="custom-input-textarea"
               value={studentData.address}
               onChange={handleChange}
             />
@@ -230,7 +246,8 @@ const AddStudent = () => {
           <Button
             variant="warning"
             className="rounded-pill px-4 fw-medium text-dark"
-            onClick={() =>
+            onClick={() => {
+              setSelectedStudentId("");
               setStudentData({
                 name: "",
                 regNo: "",
@@ -243,8 +260,8 @@ const AddStudent = () => {
                 identificationMark: "",
                 address: "",
                 fees: "",
-              })
-            }
+              });
+            }}
           >
             Reset
           </Button>

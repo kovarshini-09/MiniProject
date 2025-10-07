@@ -4,9 +4,6 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import arrowDown from "../images/arrow-down.png"; 
 
 const classOptions = [
-  "6A","6B","6C",
-  "7A","7B","7C",
-  "8A","8B","8C",
   "9A","9B","9C",
   "10A","10B","10C"
 ];
@@ -19,8 +16,10 @@ function Homework() {
 
   const homeworkSubjects = ["English", "Tamil", "Maths", "Science", "Social"];
   const homeworkContent = {
-    English: { assignment: "Write a 500-word essay on the themes of 'To Kill a Mockingbird'. Due: Friday.", givenBy: "Ms. Sharma" },
-    Tamil: { assignment: "Complete exercises 4, 5, and 6 from page 88. Prepare for a vocabulary test next week.", givenBy: "Mr. Rajan" },
+    English: { assignment: "Write a 500-word essay on the themes of 'To Kill a Mockingbird'. Due: Friday.", givenBy: "Ms. Lakshmi" },
+    Science: { assignment: "Describe the process of the water cycle with a neat diagram.", givenBy: "Mr. Ravi" },
+    Maths:{assignment:"Complete exercises 4, 5, and 6 in page 88..",givenBy:"Mr.rekha"},
+    Social:{assignment:"Write about the causes and effects of the Revolt of 1857 in India.",givenBy:"Mr.Nandhini"}
   };
 
   const handleFileChange = (e) => {

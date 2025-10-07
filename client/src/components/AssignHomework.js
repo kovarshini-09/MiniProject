@@ -82,9 +82,15 @@ function AssignHomework() {
                 style={inputStyle}
               >
                 <option value="">Select class</option>
-                <option value="Class 6">Class 6</option>
-                <option value="Class 7">Class 7</option>
-                <option value="Class 8">Class 8</option>
+                <option value="Class 6">Class 8A</option>
+                <option value="Class 7">Class 8B</option>
+                <option value="Class 8">Class 8C</option>
+                 <option value="Class 6">Class 9A</option>
+                <option value="Class 7">Class 9B</option>
+                <option value="Class 8">Class 9C</option>
+                 <option value="Class 6">Class 10A</option>
+                <option value="Class 7">Class 10B</option>
+                <option value="Class 8">Class 10C</option>
               </Form.Select>
             </Form.Group>
           </Col>

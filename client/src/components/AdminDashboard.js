@@ -71,7 +71,7 @@ function AdminDashboard() {
         <div className="mb-4" onMouseEnter={() => toggleMenu("teachers")} onMouseLeave={() => toggleMenu(null)}>
           <div className="d-flex align-items-center text-dark fw-semibold sidebar-link small-text">
             <img src={teacherIcon} alt="Teachers" width="36" height="36" className="me-2" />
-            Teachers
+            Teachersc
           </div>
           {openMenu === "teachers" && (
             <div className="ms-4 mt-3">

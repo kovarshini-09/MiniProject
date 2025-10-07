@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Row, Col, Card } from "react-bootstrap";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import axios from "axios";
+
 import logoImage from "../images/logo.png";
 import teacherAvatar from "../images/teachers-icon.png";
 import dashboardIcon from "../images/dashboard.png";
@@ -13,16 +15,44 @@ function StaffDashboard() {
   const [date, setDate] = useState(new Date());
   const location = useLocation();
   const navigate = useNavigate();
-
   const isDashboardHome = location.pathname === "/staff-dashboard";
 
-  const staffData = {
-    name: "Teacher Name",
-    role: "Job Role",
+  const [staffData, setStaffData] = useState({
+    name: "",
+    role: "",
     totalDays: 90,
     presentDays: 81,
     note: "-"
-  };
+  });
+
+  // Fetch teacher details on mount
+  useEffect(() => {
+    const fetchTeacherData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/staff-login");
+          return;
+        }
+
+        const res = await axios.get("http://localhost:5000/api/teachers/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        setStaffData(prev => ({
+          ...prev,
+          name: res.data.name,
+          role: res.data.role || "Teacher"
+        }));
+      } catch (err) {
+        console.error("Failed to fetch teacher details:", err);
+        alert("Failed to fetch teacher details. Please login again.");
+        navigate("/staff-login");
+      }
+    };
+
+    fetchTeacherData();
+  }, [navigate]);
 
   const goToHomework = () => {
     navigate("/staff-dashboard/homework");
@@ -30,7 +60,7 @@ function StaffDashboard() {
 
   return (
     <div className="d-flex flex-column min-vh-100">
-      {/* Full-width Header */}
+      {/* Header */}
       <div className="bg-white shadow-sm p-3 d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center">
           <img src={logoImage} alt="Logo" style={{ height: "50px", width: "auto" }} className="me-2" />
@@ -48,17 +78,13 @@ function StaffDashboard() {
             <img src={arrowDown} alt="Dropdown Arrow" width="18" height="18" />
           </button>
           <ul className="dropdown-menu dropdown-menu-end text-center" aria-labelledby="profileMenu">
-            <li>
-              <Link className="dropdown-item small-text" to="/profile">View Profile</Link>
-            </li>
-            <li>
-              <Link className="dropdown-item small-text" to="/logout">Logout</Link>
-            </li>
+            <li><Link className="dropdown-item small-text" to="/profile">View Profile</Link></li>
+            <li><Link className="dropdown-item small-text" to="/logout">Logout</Link></li>
           </ul>
         </div>
       </div>
 
-      {/* Body: Sidebar + Main Content */}
+      {/* Body */}
       <div className="d-flex flex-grow-1">
         {/* Sidebar */}
         <div className="bg-light border-end p-4" style={{ minWidth: "220px" }}>
@@ -66,9 +92,7 @@ function StaffDashboard() {
             to=""
             end
             className={({ isActive }) =>
-              `d-flex align-items-center text-decoration-none fw-semibold mb-3 sidebar-link ${
-                isActive ? "active-link" : "text-dark"
-              }`
+              `d-flex align-items-center text-decoration-none fw-semibold mb-3 sidebar-link ${isActive ? "active-link" : "text-dark"}`
             }
           >
             <img src={dashboardIcon} alt="Dashboard" width="28" height="28" className="me-2" />
@@ -77,9 +101,7 @@ function StaffDashboard() {
           <NavLink
             to="homework"
             className={({ isActive }) =>
-              `d-flex align-items-center text-decoration-none fw-semibold mb-3 sidebar-link ${
-                isActive ? "active-link" : "text-dark"
-              }`
+              `d-flex align-items-center text-decoration-none fw-semibold mb-3 sidebar-link ${isActive ? "active-link" : "text-dark"}`
             }
           >
             Assign Homework
@@ -87,9 +109,7 @@ function StaffDashboard() {
           <NavLink
             to="attendance"
             className={({ isActive }) =>
-              `d-flex align-items-center text-decoration-none fw-semibold mb-3 sidebar-link ${
-                isActive ? "active-link" : "text-dark"
-              }`
+              `d-flex align-items-center text-decoration-none fw-semibold mb-3 sidebar-link ${isActive ? "active-link" : "text-dark"}`
             }
           >
             Attendance
@@ -97,9 +117,7 @@ function StaffDashboard() {
           <NavLink
             to="marks"
             className={({ isActive }) =>
-              `d-flex align-items-center text-decoration-none fw-semibold mb-3 sidebar-link ${
-                isActive ? "active-link" : "text-dark"
-              }`
+              `d-flex align-items-center text-decoration-none fw-semibold mb-3 sidebar-link ${isActive ? "active-link" : "text-dark"}`
             }
           >
             Enter Marks
@@ -114,21 +132,18 @@ function StaffDashboard() {
               <Card className="shadow-sm border-0 mb-4 p-3" style={{ borderTop: "4px solid #e63946" }}>
                 <Row className="align-items-center">
                   <Col xs={12} sm={2} className="text-center mb-3 mb-sm-0">
-                    <div
-                      className="bg-secondary rounded-circle mx-auto"
-                      style={{ width: "80px", height: "80px", overflow: "hidden" }}
-                    >
+                    <div className="bg-secondary rounded-circle mx-auto" style={{ width: "80px", height: "80px", overflow: "hidden" }}>
                       <img src={teacherAvatar} alt="Teacher" className="w-100 h-100 object-fit-cover" />
                     </div>
                   </Col>
                   <Col xs={12} sm={10} className="text-center text-sm-start">
-                    <h4 className="fw-bold mb-0">{staffData.name}</h4>
-                    <p className="text-muted mb-0">{staffData.role}</p>
+                    <h4 className="fw-bold mb-0">{staffData.name || "Teacher Name"}</h4>
+                    <p className="text-muted mb-0">{staffData.role || "Job Role"}</p>
                   </Col>
                 </Row>
               </Card>
 
-              {/* Stats + Note + Calendar */}
+              {/* Stats + Homework */}
               <Row className="g-4 mb-5 align-items-stretch">
                 <Col md={8} className="d-flex flex-column">
                   <Row className="g-4 mb-4">
@@ -152,11 +167,7 @@ function StaffDashboard() {
                     </Col>
                   </Row>
 
-                  <Card
-                    className="shadow-sm border rounded p-4 flex-grow-1"
-                    style={{ cursor: "pointer" }}
-                    onClick={goToHomework}
-                  >
+                  <Card className="shadow-sm border rounded p-4 flex-grow-1" style={{ cursor: "pointer" }} onClick={goToHomework}>
                     <h5 className="fw-bold mb-4" style={{ color: "#e63946" }}>Notes / Homework</h5>
                     <div>{staffData.note}</div>
                   </Card>

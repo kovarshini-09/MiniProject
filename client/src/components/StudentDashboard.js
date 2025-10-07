@@ -1,29 +1,57 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom"; // added
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Container, Row, Col, Card } from "react-bootstrap";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import studentAvatar from "../images/students-icon2.png"; 
-import arrowDown from "../images/arrow-down.png"; 
-import logoImage from "../images/logo.png"; 
+import axios from "axios";
 
+import studentAvatar from "../images/students-icon2.png";
+import arrowDown from "../images/arrow-down.png";
+import logoImage from "../images/logo.png";
 
 function StudentDashboard() {
-  const navigate = useNavigate(); // initialize navigation
+  const navigate = useNavigate();
   const [date, setDate] = useState(new Date());
-
-  const studentData = {
-    name: "Student Name",
-    class: "Class name",
+  const [studentData, setStudentData] = useState({
+    name: "",
+    class: "",
     totalDays: 90,
     presentDays: 81,
     attendancePercentage: "93%",
     homeworkSubjects: ["English", "Tamil", "Maths", "Science", "Social"],
     examResults: []
-  };
+  });
 
-  // Handler to go to homework page
+  // Fetch student details when component mounts
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/student-login"); // redirect if no token
+          return;
+        }
+
+        const res = await axios.get("http://localhost:5000/api/students/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        setStudentData(prev => ({
+          ...prev,
+          name: res.data.name,
+          class: res.data.class
+        }));
+      } catch (err) {
+        console.error("Failed to fetch student details:", err);
+        alert("Failed to fetch student details. Please login again.");
+        navigate("/student-login");
+      }
+    };
+
+    fetchStudentData();
+  }, [navigate]);
+
   const goToHomework = () => {
     navigate("/student-dashboard/homework");
   };
@@ -33,20 +61,12 @@ function StudentDashboard() {
       {/* Header */}
       <Row className="mb-4 bg-white p-3 shadow-sm rounded align-items-center">
         <Col xs={6}>
-           {/* Logo and Heading */}
-        <Link to="/" className="navbar-brand d-flex align-items-center">
-          <img
-            src={logoImage}
-            alt="Logo"
-            style={{ height: "50px", width: "auto" }}
-            className="me-2"
-          />
-          {/* Heading with partial red color like Landing page */}
-          <span className="fw-bold fs-4 text-danger">
-            STUDENT MANAGEMENT SYSTEM
-          </span>
-        </Link>
-
+          <Link to="/" className="navbar-brand d-flex align-items-center">
+            <img src={logoImage} alt="Logo" style={{ height: "50px", width: "auto" }} className="me-2" />
+            <span className="fw-bold fs-4 text-danger">
+              STUDENT MANAGEMENT SYSTEM
+            </span>
+          </Link>
         </Col>
         <Col xs={6} className="text-end">
           <div className="dropdown">
@@ -60,10 +80,7 @@ function StudentDashboard() {
               <span className="fw-bold fs-5 me-2">Profile</span>
               <img src={arrowDown} alt="Dropdown Arrow" width="18" height="18" />
             </button>
-            <ul
-              className="dropdown-menu dropdown-menu-end text-center"
-              aria-labelledby="profileMenu"
-            >
+            <ul className="dropdown-menu dropdown-menu-end text-center" aria-labelledby="profileMenu">
               <li><a className="dropdown-item small-text" href="/student-profile">View Profile</a></li>
               <li><a className="dropdown-item small-text" href="/logout">Logout</a></li>
             </ul>
@@ -82,8 +99,8 @@ function StudentDashboard() {
               </div>
             </Col>
             <Col xs={12} sm={10} className="text-center text-sm-start">
-              <h4 className="fw-bold mb-0">{studentData.name}</h4>
-              <p className="text-muted mb-0">{studentData.class}</p>
+              <h4 className="fw-bold mb-0">{studentData.name || "Student Name"}</h4>
+              <p className="text-muted mb-0">{studentData.class || "Class Name"}</p>
             </Col>
           </Row>
         </Card>
@@ -113,20 +130,13 @@ function StudentDashboard() {
               </Col>
             </Row>
 
-            {/* Home Work Section - Clickable */}
-            <Card 
-              className="shadow-sm border rounded p-4 flex-grow-1" 
-              style={{ cursor: "pointer" }}
-              onClick={goToHomework} // navigate on click
-            >
+            {/* Homework Section */}
+            <Card className="shadow-sm border rounded p-4 flex-grow-1" style={{ cursor: "pointer" }} onClick={goToHomework}>
               <h5 className="fw-bold mb-4" style={{ color: "#e63946" }}>Home Work..!</h5>
               <Row className="g-3">
                 {studentData.homeworkSubjects.map((subject, index) => (
                   <Col key={index} xs={6} md={4}>
-                    <button 
-                      className="btn btn-outline-danger w-100 py-3 fw-bold" 
-                      style={{ borderRadius: '0.25rem' }}
-                    >
+                    <button className="btn btn-outline-danger w-100 py-3 fw-bold" style={{ borderRadius: '0.25rem' }}>
                       {subject}
                     </button>
                   </Col>
@@ -142,11 +152,7 @@ function StudentDashboard() {
                 {date.toLocaleString("default", { month: "long" })} {date.getFullYear()}
               </h5>
               <div className="d-flex justify-content-center flex-grow-1 align-items-center">
-                <Calendar 
-                  onChange={setDate} 
-                  value={date} 
-                  className="w-100 border-0"
-                />
+                <Calendar onChange={setDate} value={date} className="w-100 border-0" />
               </div>
             </Card>
           </Col>
@@ -158,9 +164,7 @@ function StudentDashboard() {
             <Card className="shadow-sm border rounded p-4">
               <h5 className="fw-bold mb-3" style={{ color: "#e63946" }}>Exam Result</h5>
               {studentData.examResults.length === 0 ? (
-                <div className="border p-3 text-muted">
-                  There is no recent exams..
-                </div>
+                <div className="border p-3 text-muted">There is no recent exams..</div>
               ) : (
                 <div>{/* Exam results table placeholder */}</div>
               )}

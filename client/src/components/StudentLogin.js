@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
+import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 import image3 from "../images/image3.png";
 
@@ -8,11 +9,28 @@ function StudentLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+   
+  const handleLogin = async (e) => {   // ✅ async here
+  e.preventDefault();
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    // For now, navigate directly
-    navigate("/student-dashboard");
+  try {
+    const res = await axios.post("http://localhost:5000/api/auth/login", {
+      email,
+      password,
+      role: "student"
+    });
+
+    if (res.data.role === "student") {
+      localStorage.setItem("token", res.data.token);
+      navigate("/student-dashboard");
+    } else {
+      alert("You are not authorized as a student!");
+    }
+  } 
+  catch (err) {
+    alert(err.response?.data?.message || "Login failed");
+  }
+
   };
 
   return (

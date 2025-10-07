@@ -6,23 +6,24 @@ import image1 from "../images/image1.png";
 
 function AdminLoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");      // controlled input
-  const [password, setPassword] = useState(""); // controlled input
+  const [email, setEmail] = useState("");      
+  const [password, setPassword] = useState(""); 
   const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch("http://localhost:5000/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role: "admin" }),
+        body: JSON.stringify({ email, password })
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        // ✅ Display backend message (Access denied or invalid credentials)
         setError(data.message || "Login failed");
         return;
       }

@@ -33,7 +33,7 @@ const Dashboard = () => {
                   />
                 </div>
                 <p className="mb-1">Total Students</p>
-                <h5 className="fw-bold">0</h5>
+                <h5 className="fw-bold">60</h5>
               </Card>
             </Col>
 
@@ -48,7 +48,7 @@ const Dashboard = () => {
                   />
                 </div>
                 <p className="mb-1">Total Teachers</p>
-                <h5 className="fw-bold">0</h5>
+                <h5 className="fw-bold">19</h5>
               </Card>
             </Col>
           </Row>

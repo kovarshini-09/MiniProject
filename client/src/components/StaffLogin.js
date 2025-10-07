@@ -1,15 +1,33 @@
-import React from "react";
+import React, { useState } from "react"; // ✅ added useState
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
+import axios from "axios"; // if you want role-based login
 import "bootstrap/dist/css/bootstrap.min.css";
 import image2 from "../images/image2.png";
 
 function StaffLoginPage() {
+  const [email, setEmail] = useState("");       // ✅ added state
+  const [password, setPassword] = useState(""); // ✅ added state
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    navigate("/staff-dashboard");
+    try {
+      const res = await axios.post("http://localhost:5000/api/auth/login", {
+        email,
+        password,
+        role: "teacher" // only teachers allowed here
+      });
+
+      if (res.data.role === "teacher") {
+        localStorage.setItem("token", res.data.token);
+        navigate("/staff-dashboard");
+      } else {
+        alert("You are not authorized as a teacher!");
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Login failed");
+    }
   };
 
   return (
@@ -33,6 +51,9 @@ function StaffLoginPage() {
                   type="email"
                   placeholder="Email"
                   className="form-control rounded-pill py-2"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
               <div className="mb-3">
@@ -40,6 +61,9 @@ function StaffLoginPage() {
                   type="password"
                   placeholder="Password"
                   className="form-control rounded-pill py-2"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
               </div>
               <div className="d-grid">
