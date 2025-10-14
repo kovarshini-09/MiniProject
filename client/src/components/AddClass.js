@@ -18,9 +18,6 @@ function AddClassPage() {
   }, []);
 
   const classOptions = [
-    "6A", "6B", "6C",
-    "7A", "7B", "7C",
-    "8A", "8B", "8C",
     "9A", "9B", "9C",
     "10A", "10B", "10C"
   ];

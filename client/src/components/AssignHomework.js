@@ -1,26 +1,52 @@
 import React, { useState } from "react";
 import { Form, Button, Row, Col, Card } from "react-bootstrap";
+import axios from "axios";
 
 function AssignHomework() {
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [assignmentType, setAssignmentType] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
+  const [subject, setSubject] = useState(""); // ✅ NEW
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert("Homework Assigned!");
+    try {
+      const token = localStorage.getItem("token"); // teacher JWT
+      await axios.post(
+        "http://localhost:5000/api/homework/assign",
+        {
+          description,
+          dueDate,
+          assignmentType,
+          className: selectedClass,
+          subject, // ✅ include subject
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      alert("Homework Assigned Successfully!");
+      setDescription("");
+      setDueDate("");
+      setAssignmentType("");
+      setSelectedClass("");
+      setSubject("");
+    } catch (err) {
+      console.error(err);
+      alert("Error assigning homework");
+    }
   };
 
   // Common red-rectangle style for all inputs
   const inputStyle = {
     border: "2px solid #e63946",
     borderRadius: "0px", // rectangle shape
-    resize: "none",      // prevent resizing for textarea
+    resize: "none", // prevent resizing for textarea
   };
 
   return (
-    <Card className="shadow-sm border rounded p-5 ">
+    <Card className="shadow-sm border rounded p-5">
       {/* Page Heading */}
       <h4 className="fw-bold mb-5" style={{ color: "#e63946" }}>
         Assign Homework
@@ -43,13 +69,13 @@ function AssignHomework() {
                 className="flex-grow-1"
                 style={{
                   ...inputStyle,
-                  minHeight: "100%", // make it stretch full column height
+                  minHeight: "100%",
                 }}
               />
             </Form.Group>
           </Col>
 
-          {/* Due Date + Assignment Type + Class Selector */}
+          {/* Right Column */}
           <Col md={4} className="d-flex flex-column">
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold">Due Date</Form.Label>
@@ -72,6 +98,22 @@ function AssignHomework() {
               />
             </Form.Group>
 
+            {/* ✅ NEW SUBJECT FIELD */}
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold">Subject</Form.Label>
+              <Form.Select
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">Select Subject</option>
+                <option value="Math">Math</option>
+                <option value="Science">Science</option>
+                <option value="English">English</option>
+                <option value="Social">Social</option>
+              </Form.Select>
+            </Form.Group>
+
             <Form.Group className="mt-auto">
               <Form.Label className="fw-semibold">
                 Assign to Students / Classes
@@ -82,15 +124,12 @@ function AssignHomework() {
                 style={inputStyle}
               >
                 <option value="">Select class</option>
-                <option value="Class 6">Class 8A</option>
-                <option value="Class 7">Class 8B</option>
-                <option value="Class 8">Class 8C</option>
-                 <option value="Class 6">Class 9A</option>
-                <option value="Class 7">Class 9B</option>
-                <option value="Class 8">Class 9C</option>
-                 <option value="Class 6">Class 10A</option>
-                <option value="Class 7">Class 10B</option>
-                <option value="Class 8">Class 10C</option>
+                <option value="9A">Class 9A</option>
+                <option value="9B">Class 9B</option>
+                <option value="9C">Class 9C</option>
+                <option value="10A">Class 10A</option>
+                <option value="10B">Class 10B</option>
+                <option value="10C">Class 10C</option>
               </Form.Select>
             </Form.Group>
           </Col>

@@ -1,4 +1,5 @@
 const Student = require('../models/Student');
+const Homework = require('../models/Homework'); // ✅ ADDED
 
 // Get all students
 exports.getAllStudents = async (req, res) => {
@@ -39,5 +40,19 @@ exports.deleteStudent = async (req, res) => {
     res.json({ message: 'Student deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// ✅ NEW: Fetch homework for a given student ID
+exports.getStudentHomework = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    const homework = await Homework.find({ className: student.class }).sort({ createdAt: -1 });
+    res.json(homework);
+  } catch (err) {
+    console.error('Error fetching homework:', err);
+    res.status(500).json({ message: 'Server Error' });
   }
 };
