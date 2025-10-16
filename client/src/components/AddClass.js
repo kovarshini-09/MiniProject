@@ -24,8 +24,49 @@ function AddClassPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert(`Class ${selectedClass} assigned to ${selectedTeacher}`);
-    // axios POST request to add class can be done here
+    if (!selectedClass || !selectedTeacher) {
+      alert("Please select class and teacher");
+      return;
+    }
+    axios
+      .post(
+        "http://localhost:5000/api/classes",
+        {
+          classId: selectedClass,
+          classTeacher: selectedTeacher,
+          students: [],
+          subjects: ["English", "Tamil", "Math", "Science", "Social"],
+        },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      )
+      .then((resp) => {
+        alert(`Class ${selectedClass} assigned to ${selectedTeacher}`);
+        const created = resp?.data || { classId: selectedClass, classTeacher: selectedTeacher };
+        const list = JSON.parse(localStorage.getItem("ui_classes") || "[]");
+        list.push(created);
+        localStorage.setItem("ui_classes", JSON.stringify(list));
+
+        // Update local teacher cache: ensure only one class teacher per class
+        const uiTeachers = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
+        const classId = selectedClass;
+        // Clear previous teacher assignment for this class
+        uiTeachers.forEach((t) => {
+          const cls = (t.assignedClass || t.class || "").toString();
+          if (cls.toLowerCase().replace(/\s+grade\s*$/i, "") === classId.toLowerCase()) {
+            t.assignedClass = "";
+          }
+        });
+        // Set assignment on the selected teacher
+        const picked = uiTeachers.find((t) => t._id === selectedTeacher);
+        if (picked) {
+          picked.assignedClass = selectedClass; // e.g., "9A" or "10C"
+        }
+        localStorage.setItem("ui_teachers", JSON.stringify(uiTeachers));
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Failed to add class");
+      });
   };
 
   return (
@@ -66,9 +107,7 @@ function AddClassPage() {
               >
                 <option value="">Select Teacher</option>
                 {teachers.map((t) => (
-                  <option key={t._id} value={t.name}>
-                    {t.name}
-                  </option>
+                  <option key={t._id} value={t._id}>{t.name}</option>
                 ))}
               </select>
             </div>

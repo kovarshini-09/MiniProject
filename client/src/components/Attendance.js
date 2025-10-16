@@ -1,5 +1,6 @@
 import React, { useState, forwardRef } from "react";
 import DatePicker from "react-datepicker";
+import axios from "axios";
 import "react-datepicker/dist/react-datepicker.css";
 import "./Attendance.css";
 
@@ -18,20 +19,39 @@ const CustomDateInput = forwardRef(({ value, onClick, placeholder }, ref) => (
   </div>
 ));
 
-const classOptions = [
-  "9A","9B","9C",
-  "10A","10B","10C"
-];
+const classOptions = ["9A", "9B", "9C", "10A", "10B", "10C"];
 
 function Attendance() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedClass, setSelectedClass] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Selected Date:", selectedDate);
-    console.log("Selected Class:", selectedClass);
-    alert("Attendance Submitted!");
+
+    if (!selectedDate || !selectedClass) {
+      alert("⚠️ Please select both date and class.");
+      return;
+    }
+
+    try {
+      // ✅ Convert Date object to string (dd/mm/yyyy)
+      const formattedDate = selectedDate.toLocaleDateString("en-GB");
+
+      // ✅ Send to backend using correct field names
+      const res = await axios.post("http://localhost:5000/api/attendance/update", {
+        class: selectedClass,
+        date: formattedDate,
+      });
+
+      alert(res.data.message);
+    } catch (err) {
+      console.error("❌ Attendance submit error:", err);
+      if (err.response && err.response.data && err.response.data.message) {
+        alert(`Server error: ${err.response.data.message}`);
+      } else {
+        alert("Failed to submit attendance. Please try again.");
+      }
+    }
   };
 
   return (
@@ -61,12 +81,18 @@ function Attendance() {
                 onChange={(e) => setSelectedClass(e.target.value)}
               >
                 <option value="">Choose Class</option>
-                {classOptions.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+                {classOptions.map((cls) => (
+                  <option key={cls} value={cls}>
+                    {cls}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="form-submit-wrapper">
-              <button type="submit" className="custom-submit">Submit</button>
+              <button type="submit" className="custom-submit">
+                Submit
+              </button>
             </div>
           </form>
         </div>

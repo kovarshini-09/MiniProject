@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Container, Row, Col, Button, Card, Form } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./AllStudents.css";
 import { FaUserPlus } from "react-icons/fa";
 import empIcon from "../images/teachers-icon.png";
 import AddTeacher from "./AddTeachers";
-import axios from "axios";
+// no axios needed for listing; drive from localStorage per requirement
 import { useNavigate } from "react-router-dom";
 
 function AllTeachers() {
   const [showAddTeacher, setShowAddTeacher] = useState(false);
   const [teachers, setTeachers] = useState([]);
+  const [removedIds, setRemovedIds] = useState([]); // soft-deleted in view only
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
   const handleAddTeacher = () => {
@@ -22,33 +24,36 @@ function AllTeachers() {
   };
 
   useEffect(() => {
-    const fetchTeachers = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/api/teachers");
-        // Optional: sort alphabetically
-        const sortedTeachers = res.data.sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-        setTeachers(sortedTeachers);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchTeachers();
-  }, []);
+    const stored = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
+    setTeachers(stored);
+  }, [showAddTeacher]);
 
-  const handleView = (id) => navigate(`/admin/teachers/${id}`);
-  const handleEdit = (id) => navigate(`/admin/teachers/edit/${id}`);
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this teacher?")) {
-      try {
-        await axios.delete(`http://localhost:5000/api/teachers/${id}`);
-        setTeachers(teachers.filter((t) => t._id !== id));
-      } catch (err) {
-        console.error(err);
-      }
-    }
+  const handleView = (teacher) => {
+    setShowAddTeacher(true);
+    sessionStorage.setItem("teacherFormMode", "view");
+    sessionStorage.setItem("teacherFormId", teacher._id);
   };
+  const handleEdit = (teacher) => {
+    setShowAddTeacher(true);
+    sessionStorage.setItem("teacherFormMode", "edit");
+    sessionStorage.setItem("teacherFormId", teacher._id);
+  };
+  const handleSoftDelete = (id) => {
+    if (!window.confirm("Hide this teacher from the list? (Not deleted from DB)")) return;
+    setRemovedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const visibleTeachers = useMemo(() => {
+    const filtered = teachers.filter((t) => !removedIds.includes(t._id));
+    if (!search.trim()) return filtered;
+    const q = search.toLowerCase();
+    return filtered.filter(
+      (t) =>
+        t.name?.toLowerCase().includes(q) ||
+        t.email?.toLowerCase().includes(q) ||
+        t.subject?.toLowerCase().includes(q)
+    );
+  }, [teachers, removedIds, search]);
 
   return (
     <Container fluid className="p-4 bg-light min-vh-100">
@@ -63,6 +68,8 @@ function AllTeachers() {
                 placeholder="Search"
                 className="rounded-pill px-3"
                 style={{ maxWidth: "200px", borderColor: "#dc3545" }}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
               <Button
                 variant="danger"
@@ -76,7 +83,7 @@ function AllTeachers() {
 
           {/* Teacher Cards */}
           <Row className="g-4">
-            {teachers.map((teacher) => (
+            {visibleTeachers.map((teacher) => (
               <Col sm={6} md={4} lg={3} key={teacher._id}>
                 <Card className="shadow-sm border-0 text-center h-100">
                   <Card.Body className="d-flex flex-column align-items-center">
@@ -94,7 +101,7 @@ function AllTeachers() {
                           variant="outline-secondary"
                           size="sm"
                           className="px-3"
-                          onClick={() => handleView(teacher._id)}
+                          onClick={() => handleView(teacher)}
                         >
                           View
                         </Button>
@@ -102,7 +109,7 @@ function AllTeachers() {
                           variant="outline-primary"
                           size="sm"
                           className="px-3"
-                          onClick={() => handleEdit(teacher._id)}
+                          onClick={() => handleEdit(teacher)}
                         >
                           Edit
                         </Button>
@@ -110,7 +117,7 @@ function AllTeachers() {
                           variant="outline-warning"
                           size="sm"
                           className="px-3 text-dark"
-                          onClick={() => handleDelete(teacher._id)}
+                          onClick={() => handleSoftDelete(teacher._id)}
                         >
                           Delete
                         </Button>

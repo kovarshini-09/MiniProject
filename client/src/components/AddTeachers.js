@@ -7,6 +7,7 @@ import "./EmployeeForm.css";
 const AddTeacher = () => {
   const [teachers, setTeachers] = useState([]); // all teachers
   const [selectedTeacherId, setSelectedTeacherId] = useState(""); // selected teacher
+  const [mode, setMode] = useState("create"); // create | view | edit
   const [teacherData, setTeacherData] = useState({}); // details of selected teacher
 
   // Fetch all teachers from backend
@@ -19,40 +20,102 @@ const AddTeacher = () => {
       .catch((err) => console.error(err));
   }, []);
 
-  // Handle selecting teacher from dropdown
+  // Read mode/id for view/edit navigation
+  useEffect(() => {
+    const storedMode = sessionStorage.getItem("teacherFormMode");
+    const storedId = sessionStorage.getItem("teacherFormId");
+    if (storedMode) setMode(storedMode);
+    if (storedId) setSelectedTeacherId(storedId);
+  }, []);
+
+  // Auto-populate when id present
+  useEffect(() => {
+    if (!selectedTeacherId) return;
+    const all = teachers.length
+      ? teachers
+      : JSON.parse(localStorage.getItem("ui_teachers") || "[]");
+    const t = all.find((x) => x._id === selectedTeacherId);
+    if (t) {
+      setTeacherData({
+        name: t.name || "",
+        email: t.email || "",
+        mobileNumber: t.mobileNumber || "",
+        subject: t.subject || "",
+        dob: t.dob ? String(t.dob).substr(0, 10) : "",
+        gender: t.gender || "",
+        fatherName: t.fatherName || "",
+        motherName: t.motherName || "",
+        education: t.education || "",
+        experience: t.experience || "",
+        monthlySalary: t.monthlySalary || "",
+        bloodGroup: t.bloodGroup || "",
+        address: t.address || "",
+      });
+    }
+  }, [teachers, selectedTeacherId]);
+
+  // Handle selecting teacher from dropdown (unified with mode + populate)
   const handleSelect = (e) => {
     const id = e.target.value;
     setSelectedTeacherId(id);
+    setMode(id ? "edit" : "create");
     const selected = teachers.find((t) => t._id === id);
     if (selected) {
       setTeacherData({
-        name: selected.name,
-        email: selected.email,
-        mobileNumber: selected.mobileNumber,
-        subject: selected.subject,
-        dob: selected.dob ? selected.dob.substr(0, 10) : "",
-        gender: selected.gender,
-        fatherName: selected.fatherName,
-        motherName: selected.motherName,
-        education: selected.education,
-        experience: selected.experience,
-        monthlySalary: selected.monthlySalary,
-        bloodGroup: selected.bloodGroup,
-        address: selected.address,
+        name: selected.name || "",
+        email: selected.email || "",
+        mobileNumber: selected.mobileNumber || "",
+        subject: selected.subject || "",
+        dob: selected.dob ? String(selected.dob).substr(0, 10) : "",
+        gender: selected.gender || "",
+        fatherName: selected.fatherName || "",
+        motherName: selected.motherName || "",
+        education: selected.education || "",
+        experience: selected.experience || "",
+        monthlySalary: selected.monthlySalary || "",
+        bloodGroup: selected.bloodGroup || "",
+        address: selected.address || "",
       });
+    } else {
+      setTeacherData({});
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (selectedTeacherId) {
-      alert("Teacher updated successfully!");
-      // Add axios PUT request to update teacher here
+      axios
+        .put(
+          `http://localhost:5000/api/admin/teachers/${selectedTeacherId}`,
+          teacherData,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        )
+        .then(() => {
+          alert("Teacher updated successfully!");
+          const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
+          const idx = list.findIndex((t) => t._id === selectedTeacherId);
+          const payload = { _id: selectedTeacherId, ...teacherData };
+          if (idx >= 0) list[idx] = payload; else list.push(payload);
+          localStorage.setItem("ui_teachers", JSON.stringify(list));
+        })
+        .catch((err) => console.error(err));
     } else {
-      alert("Teacher added successfully!");
-      // Add axios POST request to create teacher here
+      axios
+        .post("http://localhost:5000/api/admin/teachers", teacherData, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then((resp) => {
+          alert("Teacher added successfully!");
+          const created = resp?.data?.teacher || { _id: Date.now().toString(), ...teacherData };
+          const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
+          list.push(created);
+          localStorage.setItem("ui_teachers", JSON.stringify(list));
+        })
+        .catch((err) => console.error(err));
     }
   };
+
+  // (duplicate removed)
 
   return (
     <Container fluid className="p-4 bg-light min-vh-100">
@@ -87,7 +150,7 @@ const AddTeacher = () => {
               type="email"
               className="custom-input"
               value={teacherData.email || ""}
-              readOnly={!!selectedTeacherId} // view/edit mode disables email
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -100,6 +163,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, mobileNumber: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -112,6 +176,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, subject: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -124,6 +189,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, dob: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -136,6 +202,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, gender: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
         </Row>
@@ -153,6 +220,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, fatherName: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -165,6 +233,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, motherName: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -177,6 +246,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, education: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -189,6 +259,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, experience: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -201,6 +272,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, monthlySalary: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -213,6 +285,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, bloodGroup: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
 
@@ -226,6 +299,7 @@ const AddTeacher = () => {
               onChange={(e) =>
                 setTeacherData({ ...teacherData, address: e.target.value })
               }
+              readOnly={mode === "view"}
             />
           </Col>
         </Row>
@@ -234,10 +308,11 @@ const AddTeacher = () => {
           <Button
             variant="warning"
             className="rounded-pill px-4 fw-medium text-dark"
-            onClick={() => window.location.reload()}
+            onClick={() => { sessionStorage.removeItem("teacherFormMode"); sessionStorage.removeItem("teacherFormId"); window.location.reload(); }}
           >
             Reset
           </Button>
+          {mode !== "view" && (
           <Button
             variant="info"
             className="rounded-pill px-4 fw-medium text-white"
@@ -245,6 +320,7 @@ const AddTeacher = () => {
           >
             Submit
           </Button>
+          )}
         </div>
       </div>
     </Container>

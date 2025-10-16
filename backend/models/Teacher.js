@@ -15,5 +15,7 @@ const teacherSchema = new mongoose.Schema({
     bloodGroup: { type: String },
     address: { type: String },
     password: { type: String, required: true },
+    // Optional: class teacher assignment for authorization
+    assignedClass: { type: String },
 });
 module.exports = mongoose.model('Teacher', teacherSchema);

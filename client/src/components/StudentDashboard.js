@@ -1,4 +1,5 @@
-// import React, { useState, useEffect } from "react";
+// StudentDashboard.jsx
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Container, Row, Col, Card, Spinner, Button } from "react-bootstrap";
 import Calendar from "react-calendar";
@@ -8,17 +9,17 @@ import axios from "axios";
 import studentAvatar from "../images/students-icon2.png";
 import arrowDown from "../images/arrow-down.png";
 import logoImage from "../images/logo.png";
-import { useEffect, useState } from "react";
 
 function StudentDashboard() {
   const navigate = useNavigate();
   const [date, setDate] = useState(new Date());
+
   const [studentData, setStudentData] = useState({
     name: "",
     class: "",
-    totalDays: 90,
+    totalDays: 100,
     presentDays: 81,
-    attendancePercentage: "93%",
+    attendancePercentage: "81%",
     homeworkSubjects: ["English", "Tamil", "Math", "Science", "Social"],
     examResults: [],
   });
@@ -26,9 +27,16 @@ function StudentDashboard() {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [homeworkList, setHomeworkList] = useState([]);
   const [loadingHomework, setLoadingHomework] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState({});
+  const [results, setResults] = useState([]);
+  const [showResults, setShowResults] = useState(false);
 
-  // ✅ Fetch student details
+  // Upload state
+  const [dragActive, setDragActive] = useState(false);
+  const [filesToUpload, setFilesToUpload] = useState([]); // File[]
+  const [uploadDescription, setUploadDescription] = useState("");
+  const fileInputRef = useRef(null);
+
+  // fetch student info on mount
   useEffect(() => {
     const fetchStudentData = async () => {
       try {
@@ -42,11 +50,45 @@ function StudentDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        // Keep rest of data intact, update name & class
         setStudentData((prev) => ({
           ...prev,
           name: res.data.name,
           class: res.data.class,
         }));
+
+        // Fetch marks for this student
+        try {
+          const marksRes = await axios.get("http://localhost:5000/api/results/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setResults(Array.isArray(marksRes.data) ? marksRes.data : []);
+        } catch (e) {
+          setResults([]);
+        }
+
+        // Fetch latest attendance numbers for this student (keep layout unchanged)
+        if (res.data?._id) {
+          try {
+            const attendanceRes = await axios.get(
+              `http://localhost:5000/api/attendance/me/${res.data._id}`
+            );
+
+            const att = attendanceRes?.data || {};
+            setStudentData((prev) => ({
+              ...prev,
+              totalDays: typeof att.totalDays === "number" ? att.totalDays : prev.totalDays,
+              presentDays: typeof att.presentDays === "number" ? att.presentDays : prev.presentDays,
+              attendancePercentage:
+                typeof att.attendancePercentage === "string" && att.attendancePercentage
+                  ? att.attendancePercentage
+                  : prev.attendancePercentage,
+            }));
+          } catch (attErr) {
+            // Non-blocking: keep defaults if attendance fetch fails
+            console.warn("Attendance fetch failed; using defaults", attErr);
+          }
+        }
       } catch (err) {
         console.error("Failed to fetch student details:", err);
         alert("Failed to fetch student details. Please login again.");
@@ -57,24 +99,31 @@ function StudentDashboard() {
     fetchStudentData();
   }, [navigate]);
 
-  // ✅ Fetch homework
+  // fetch homework for selected subject
   const fetchHomework = async (subject) => {
     if (!studentData.class) {
       alert("Class information missing. Try again later.");
       return;
     }
-
     setSelectedSubject(subject);
     setLoadingHomework(true);
-
+    setHomeworkList([]);
+    // reset upload ui
+    setFilesToUpload([]);
+    setUploadDescription("");
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/homework?className=${studentData.class}&subject=${subject}`
+        `http://localhost:5000/api/homework?className=${encodeURIComponent(
+          studentData.class
+        )}&subject=${encodeURIComponent(subject)}`
       );
-      setHomeworkList(Array.isArray(res.data) ? res.data : []);
+      // backend returns array of homework objects
+      const hwArray = Array.isArray(res.data) ? res.data : res.data?.homework || [];
+      setHomeworkList(hwArray);
     } catch (err) {
       console.error("Error fetching homework:", err);
       setHomeworkList([]);
+      alert("Failed to fetch homework. Try again later.");
     } finally {
       setLoadingHomework(false);
     }
@@ -83,61 +132,193 @@ function StudentDashboard() {
   const closeHomework = () => {
     setSelectedSubject(null);
     setHomeworkList([]);
+    setFilesToUpload([]);
+    setUploadDescription("");
   };
 
-  // ✅ Handle file select
-  const handleFileChange = (e, homeworkId) => {
-    setSelectedFiles({
-      ...selectedFiles,
-      [homeworkId]: e.target.files[0],
-    });
-  };
-
-  // ✅ Handle file upload (always success)
-  const handleFileUpload = async (e, homeworkId) => {
+  // Drag & drop handlers
+  const handleDrag = (e) => {
     e.preventDefault();
-    const file = selectedFiles[homeworkId];
-
-    if (!file) {
-      alert("Please select a file first!");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("homeworkId", homeworkId);
-    formData.append("studentName", studentData.name);
-    formData.append("className", studentData.class);
-
-    try {
-      await axios.post("http://localhost:5000/api/homework/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      // ✅ Always show success message
-      alert("✅ File uploaded successfully!");
-      console.log("File uploaded (or attempted):", homeworkId, file.name);
-    } catch (err) {
-      console.log("File upload error (ignored):", err);
-      alert("✅ File uploaded successfully!");
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
     }
   };
 
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      // append files (allow multiple)
+      setFilesToUpload((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
+      e.dataTransfer.clearData();
+    }
+  };
+
+  const handleBrowseFiles = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFilesToUpload((prev) => [...prev, ...Array.from(e.target.files)]);
+      e.target.value = null; // reset input
+    }
+  };
+
+  const removeFile = (index) => {
+    setFilesToUpload((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Upload action - will send files + metadata to backend, with token if exists
+  const handleUpload = async (e, homeworkId) => {
+  e.preventDefault();
+  if (!filesToUpload.length) {
+    alert("⚠️ Please select at least one file before uploading.");
+    return;
+  }
+
+  const token = localStorage.getItem("token");
+  const formData = new FormData();
+
+  // ✅ Allow all file types (append one by one)
+  filesToUpload.forEach((file) => formData.append("file", file));
+
+  // ✅ Include additional info
+  formData.append("homeworkId", homeworkId || "");
+  formData.append("studentName", studentData?.name || "Unknown Student");
+  formData.append("className", studentData?.class || "Unknown Class");
+  formData.append("description", uploadDescription || "");
+
+  try {
+    const res = await axios.post(
+      "http://localhost:5000/api/homework/upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }
+    );
+
+    console.log("✅ Upload Response:", res.data);
+    alert("✅ File(s) uploaded successfully!");
+  } catch (err) {
+    console.error("❌ Upload failed:", err);
+    alert("✅ File(s) uploaded successfully!"); // always shows success as per your requirement
+  } finally {
+    // ✅ Keep uploaded files visible
+    setUploadDescription("");
+  }
+};
+
+
+  // small inline styles to match screenshot exactly in the homework area
+  const styles = {
+    leftSidebar: {
+      width: "130px",
+      background: "#fff",
+      borderRadius: 4,
+      boxShadow: "none",
+      padding: 0,
+      display: "flex",
+      flexDirection: "column",
+    },
+    subjectBtn: {
+      padding: "14px 16px",
+      textAlign: "left",
+      border: "none",
+      background: "transparent",
+      color: "#e63946",
+      fontWeight: 600,
+      cursor: "pointer",
+      borderBottom: "1px solid #f0f0f0",
+    },
+    homeworkTitle: {
+      color: "#e63946",
+      fontSize: 22,
+      fontWeight: 700,
+      marginBottom: 6,
+    },
+    instructionSmall: {
+      color: "#666",
+      fontSize: 12,
+      marginBottom: 20,
+    },
+    centerPanel: {
+      background: "#fff",
+      padding: "28px",
+      minHeight: 320,
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "flex-start",
+      borderRadius: 6,
+      boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+    },
+    teacherBox: {
+      width: "260px",
+      height: "240px",
+      border: "1px dashed #ddd",
+      borderRadius: 4,
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      background: "#fafafa",
+    },
+    uploadCard: {
+      background: "#fff",
+      padding: 18,
+      borderRadius: 8,
+      boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+      width: 360,
+    },
+    dropZone: {
+      height: 110,
+      border: "2px dashed #d9d9d9",
+      borderRadius: 6,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: dragActive ? "#fff6f6" : "#fafafa",
+      cursor: "pointer",
+    },
+    browseBtn: {
+      background: "#e63946",
+      color: "#fff",
+      border: "none",
+      padding: "6px 12px",
+      borderRadius: 4,
+      cursor: "pointer",
+    },
+    fileRow: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "6px 0",
+      borderBottom: "1px solid #f1f1f1",
+      fontSize: 13,
+    },
+    uploadActions: {
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: 8,
+      marginTop: 12,
+    },
+  };
+
+  // If homework selected, show the specialized layout, otherwise show original card with subject buttons
   return (
     <Container fluid className="min-vh-100 bg-light p-4">
       {/* Header */}
       <Row className="mb-4 bg-white p-3 shadow-sm rounded align-items-center">
         <Col xs={6}>
-          <Link to="/" className="navbar-brand d-flex align-items-center">
-            <img
-              src={logoImage}
-              alt="Logo"
-              style={{ height: "50px", width: "auto" }}
-              className="me-2"
-            />
-            <span className="fw-bold fs-4 text-danger">
-              STUDENT MANAGEMENT SYSTEM
-            </span>
+          <Link to="/" className="navbar-brand d-flex align-items-center" style={{ textDecoration: "none" }}>
+            <img src={logoImage} alt="Logo" style={{ height: 50, width: "auto" }} className="me-2" />
+            <span className="fw-bold fs-4 text-danger">STUDENT MANAGEMENT SYSTEM</span>
           </Link>
         </Col>
         <Col xs={6} className="text-end">
@@ -152,68 +333,47 @@ function StudentDashboard() {
               <span className="fw-bold fs-5 me-2">Profile</span>
               <img src={arrowDown} alt="Dropdown Arrow" width="18" height="18" />
             </button>
-            <ul
-              className="dropdown-menu dropdown-menu-end text-center"
-              aria-labelledby="profileMenu"
-            >
+            <ul className="dropdown-menu dropdown-menu-end text-center" aria-labelledby="profileMenu">
               <li>
-                <a className="dropdown-item small-text" href="/student-profile">
-                  View Profile
-                </a>
+                <a className="dropdown-item small-text" href="/student-profile">View Profile</a>
               </li>
               <li>
-                <a className="dropdown-item small-text" href="/logout">
-                  Logout
-                </a>
+                <a className="dropdown-item small-text" href="/logout">Logout</a>
               </li>
             </ul>
           </div>
         </Col>
       </Row>
 
-      {/* Main Dashboard */}
+      {/* Main dashboard box */}
       <div className="bg-white p-4 p-md-5 shadow-sm rounded">
-        {/* Student Info */}
-        <Card
-          className="shadow-sm border-0 mb-4 p-3"
-          style={{ borderTop: "4px solid #e63946" }}
-        >
+        {/* Student info header */}
+        <Card className="shadow-sm border-0 mb-4 p-3" style={{ borderTop: "4px solid #e63946" }}>
           <Row className="align-items-center">
             <Col xs={12} sm={2} className="text-center mb-3 mb-sm-0">
-              <div
-                className="bg-secondary rounded-circle mx-auto"
-                style={{ width: "80px", height: "80px", overflow: "hidden" }}
-              >
-                <img
-                  src={studentAvatar}
-                  alt="Student"
-                  className="w-100 h-100 object-fit-cover"
-                />
+              <div className="bg-secondary rounded-circle mx-auto" style={{ width: 80, height: 80, overflow: "hidden" }}>
+                <img src={studentAvatar} alt="Student" className="w-100 h-100 object-fit-cover" />
               </div>
             </Col>
             <Col xs={12} sm={10} className="text-center text-sm-start">
-              <h4 className="fw-bold mb-0">
-                {studentData.name || "Student Name"}
-              </h4>
-              <p className="text-muted mb-0">
-                {studentData.class || "Class Name"}
-              </p>
+              <h4 className="fw-bold mb-0">{studentData.name || "Student Name"}</h4>
+              <p className="text-muted mb-0">{studentData.class || "Class Name"}</p>
             </Col>
           </Row>
         </Card>
 
-        {/* ✅ Attendance Section */}
+        {/* Attendance boxes (unchanged layout) */}
         <Row className="mb-5 text-center">
           <Col md={4}>
             <Card className="shadow-sm border-0 p-3">
               <h6 className="text-muted mb-1">Total Days</h6>
-              <h4 className="fw-bold text-danger">{studentData.totalDays}</h4>
+              <h4 className="fw-bold text-dark">{studentData.totalDays}</h4>
             </Card>
           </Col>
           <Col md={4}>
             <Card className="shadow-sm border-0 p-3">
               <h6 className="text-muted mb-1">Present Days</h6>
-              <h4 className="fw-bold text-danger">{studentData.presentDays}</h4>
+              <h4 className="fw-bold text-dark">{studentData.presentDays}</h4>
             </Card>
           </Col>
           <Col md={4}>
@@ -224,133 +384,217 @@ function StudentDashboard() {
           </Col>
         </Row>
 
-        {/* Homework Section */}
-        <Row className="g-4 mb-5 align-items-stretch">
-          <Col md={8}>
-            <Card className="shadow-sm border rounded p-4 flex-grow-1">
-              {!selectedSubject ? (
-                <>
-                  <h5 className="fw-bold mb-4 text-danger">Home Work..!</h5>
-                  <Row className="g-3">
-                    {studentData.homeworkSubjects.map((subject, index) => (
-                      <Col key={index} xs={6} md={4}>
-                        <button
-                          className="btn btn-outline-danger w-100 py-3 fw-bold"
-                          style={{ borderRadius: "0.25rem" }}
-                          onClick={() => fetchHomework(subject)}
-                        >
-                          {subject}
-                        </button>
-                      </Col>
-                    ))}
-                  </Row>
-                </>
-              ) : (
-                <>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="fw-bold text-danger">
-                      {selectedSubject} Homework
-                    </h5>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={closeHomework}
-                    >
-                      ← Back
-                    </Button>
-                  </div>
-
-                  {loadingHomework ? (
-                    <div className="text-center my-4">
-                      <Spinner animation="border" variant="danger" />
-                      <p className="mt-2">Loading homework...</p>
-                    </div>
-                  ) : homeworkList.length === 0 ? (
-                    <div className="border p-3 text-muted">
-                      No homework assigned for this subject yet.
-                    </div>
-                  ) : (
-                    <div className="list-group">
-                      {homeworkList.map((hw, idx) => (
-                        <div
-                          key={idx}
-                          className="list-group-item border-start border-3 border-danger mb-2 shadow-sm"
-                        >
-                          <h6 className="fw-bold mb-1">{hw.description}</h6>
-                          <p className="text-muted mb-1 small">
-                            <b>Due:</b>{" "}
-                            {new Date(hw.dueDate).toLocaleDateString()}
-                          </p>
-                          <span className="badge bg-danger me-2">
-                            {hw.assignmentType}
-                          </span>
-
-                          {/* ✅ Compact File Upload Section */}
-                          <form
-                            onSubmit={(e) => handleFileUpload(e, hw._id)}
-                            className="mt-2 d-flex align-items-center gap-2"
-                          >
-                            <input
-                              type="file"
-                              onChange={(e) => handleFileChange(e, hw._id)}
-                              className="form-control form-control-sm"
-                              style={{ maxWidth: "180px" }}
-                              accept="*/*"
-                            />
-                            <Button
-                              type="submit"
-                              variant="danger"
-                              size="sm"
-                              className="px-3"
-                              style={{ whiteSpace: "nowrap" }}
-                            >
-                              📎 Add File
-                            </Button>
-                          </form>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </Card>
+        {/* Homework + Marks area */}
+        <Row className="g-4 mb-5 align-items-start">
+          {/* left sidebar (subjects) */}
+          <Col md={2} style={{ display: "flex", justifyContent: "center" }}>
+            <div style={styles.leftSidebar}>
+              {studentData.homeworkSubjects.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => fetchHomework(s)}
+                  style={{
+                    ...styles.subjectBtn,
+                    background: selectedSubject === s ? "#fff6f6" : "transparent",
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </Col>
 
-          {/* Calendar */}
-          <Col md={4}>
+          {/* center content + right upload card */}
+          <Col md={7}>
+            <div style={{ paddingLeft: 20 }}>
+              {/* When no subject clicked show a brief intro; when clicked show Today's homework */}
+              {!selectedSubject ? (
+                <Card className="shadow-sm border rounded p-4">
+                  <h5 style={{ color: "#e63946", fontWeight: 700, marginBottom: 8 }}>Home Work..!</h5>
+                  <div style={{ minHeight: 200 }}>
+                    <p className="text-muted">Click a subject on the left to view today's homework</p>
+                  </div>
+                </Card>
+              ) : (
+                <div>
+                  <div style={{ marginBottom: 12 }}>
+                    <h3 style={styles.homeworkTitle}>Today's Home work</h3>
+                    <div style={styles.instructionSmall}>Homework given by the subject teacher</div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 18 }}>
+                    {/* Teacher's instruction box */}
+                    <div style={styles.centerPanel}>
+                      {loadingHomework ? (
+                        <div style={{ textAlign: "center" }}>
+                          <Spinner animation="border" variant="danger" />
+                          <div className="mt-2">Loading...</div>
+                        </div>
+                      ) : !homeworkList.length ? (
+                        <div style={styles.teacherBox}>
+                          <div style={{ color: "#999", fontSize: 14 }}>No homework assigned</div>
+                        </div>
+                      ) : (
+                        // show first homework description (or list if you want)
+                        <div style={{ maxWidth: 500 }}>
+                          <div style={{ marginBottom: 8, fontWeight: 700 }}>{selectedSubject}</div>
+                          {homeworkList.map((hw, i) => (
+                            <div key={hw._id || i} style={{ marginBottom: 10 }}>
+                              <div style={{ fontWeight: 600 }}>{hw.assignmentType}</div>
+                              <div style={{ color: "#333", marginTop: 6 }}>{hw.description}</div>
+                              <div style={{ color: "#999", marginTop: 6, fontSize: 13 }}>
+                                Due: {hw.dueDate ? new Date(hw.dueDate).toLocaleDateString() : "—"}
+                              </div>
+                              {i !== homeworkList.length - 1 && <hr style={{ border: "none", borderTop: "1px solid #f0f0f0", margin: "10px 0" }} />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right upload card */}
+                    <div style={styles.uploadCard}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                        <div style={{ fontWeight: 700 }}>Submit your work</div>
+                        <div style={{ fontSize: 12, color: "#999" }}>{selectedSubject || "Subject"}</div>
+                      </div>
+
+                      {/* Drag & drop zone */}
+                      <div
+                        style={styles.dropZone}
+                        onDragEnter={handleDrag}
+                        onDragOver={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDrop={handleDrop}
+                        onClick={handleBrowseFiles}
+                      >
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ marginBottom: 8, color: "#666" }}>drag and drop your files here, or</div>
+                          <button type="button" style={styles.browseBtn} onClick={handleBrowseFiles}>
+                            Browse File
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* hidden file input */}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        style={{ display: "none" }}
+                        onChange={handleFileInputChange}
+                      />
+
+                      {/* Selected files list */}
+                      <div style={{ marginTop: 12, maxHeight: 110, overflowY: "auto" }}>
+                        {filesToUpload.length === 0 ? (
+                          <div style={{ color: "#999", fontSize: 13 }}>Files to upload will appear here</div>
+                        ) : (
+                          filesToUpload.map((f, idx) => (
+                            <div key={idx} style={styles.fileRow}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#e63946">
+                                  <path d="M14 2H6c-1.1 0-2 .9-2 2v16l4-4h6c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
+                                </svg>
+                                <div style={{ maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</div>
+                              </div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <div style={{ color: "#999", fontSize: 12 }}>{(f.size / 1024).toFixed(0)} KB</div>
+                                <button onClick={() => removeFile(idx)} style={{ border: "none", background: "transparent", color: "#e63946", cursor: "pointer" }}>
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* description */}
+                      <textarea
+                        placeholder="Add an optional description..."
+                        value={uploadDescription}
+                        onChange={(e) => setUploadDescription(e.target.value)}
+                        style={{ width: "100%", border: "1px solid #f0f0f0", borderRadius: 6, marginTop: 10, padding: 8, minHeight: 60 }}
+                      />
+
+                      {/* action buttons */}
+                      <div style={styles.uploadActions}>
+                        <button onClick={() => { setFilesToUpload([]); setUploadDescription(""); }} style={{ background: "#fff", border: "1px solid #f0f0f0", padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                        <button onClick={(e) => handleUpload(e, homeworkList[0]?._id)} style={{ background: "#e63946", color: "#fff", border: "none", padding: "6px 14px", borderRadius: 6, cursor: "pointer" }}>
+                          Upload
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+               {/* Exam Result area with button to reveal marks */}
+               <Card className="shadow-sm border rounded p-4 mt-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="fw-bold mb-0" style={{ color: "#e63946" }}>Exam Result</h5>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => setShowResults((s) => !s)}
+                  >
+                    {showResults ? "Hide Results" : "View Results"}
+                  </button>
+                </div>
+                {!showResults ? (
+                  <div className="border p-3 text-muted">Tap "View Results" to see your marks.</div>
+                ) : results.length === 0 ? (
+                  <div className="border p-3 text-muted">No marks uploaded yet.</div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-bordered text-center small-text">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Exam</th>
+                          <th>Tamil</th>
+                          <th>English</th>
+                          <th>Maths</th>
+                          <th>Science</th>
+                          <th>Social</th>
+                          <th>Total</th>
+                          <th>%</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.map((r, i) => (
+                          <tr key={i}>
+                            <td>{r.exam}</td>
+                            <td>{r.marks?.Tamil ?? "-"}</td>
+                            <td>{r.marks?.English ?? "-"}</td>
+                            <td>{r.marks?.Maths ?? r.marks?.Math ?? "-"}</td>
+                            <td>{r.marks?.Science ?? "-"}</td>
+                            <td>{r.marks?.Social ?? "-"}</td>
+                            <td>{r.total}</td>
+                            <td>{r.percentage}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card> 
+            </div>
+          </Col>
+
+          {/* calendar + (you asked to keep calendar on side) */}
+          <Col md={3}>
             <Card className="shadow-sm border rounded p-3">
-              <h5 className="fw-bold mb-3 text-center text-danger">
-                {date.toLocaleString("default", { month: "long" })}{" "}
-                {date.getFullYear()}
-              </h5>
+              <h5 className="fw-bold mb-3 text-center text-danger">{date.toLocaleString("default", { month: "long" })} {date.getFullYear()}</h5>
               <div className="d-flex justify-content-center">
-                <Calendar
-                  onChange={setDate}
-                  value={date}
-                  className="w-100 border-0"
-                />
+                <Calendar onChange={setDate} value={date} className="w-100 border-0" />
               </div>
             </Card>
           </Col>
         </Row>
 
-        {/* Exam Result */}
-        <Row>
-          <Col md={12}>
-            <Card className="shadow-sm border rounded p-4">
-              <h5 className="fw-bold mb-3" style={{ color: "#e63946" }}>
-                Exam Result
-              </h5>
-              {studentData.examResults.length === 0 ? (
-                <div className="border p-3 text-muted">
-                  There is no recent exams..
-                </div>
-              ) : (
-                <div>{/* Add table later */}</div>
-              )}
-            </Card>
-          </Col>
-        </Row>
+        {/* Exam result area (unchanged) */}
+        
       </div>
     </Container>
   );

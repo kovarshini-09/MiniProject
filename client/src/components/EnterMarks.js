@@ -50,16 +50,26 @@ function EnterMarks() {
   const calculateTotal = () =>
     marks.reduce((total, item) => total + (parseFloat(item.marks) || 0), 0);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedStudent || !selectedClass) {
       alert("Please select a student and a class before submitting.");
       return;
     }
-    console.log("Student:", selectedStudent);
-    console.log("Class:", selectedClass);
-    console.log("Marks:", marks);
-    alert("Marks submitted! Check console for data.");
+    const token = localStorage.getItem("token");
+    const subjMarks = marks.reduce((acc, m) => ({ ...acc, [m.subject]: Number(m.marks) || 0 }), {});
+    const studentObj = students.find((s) => s._id === selectedStudent);
+    try {
+      await axios.post(
+        "http://localhost:5000/api/results",
+        { studentId: selectedStudent, exam: "Term", marks: subjMarks },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("Marks submitted!");
+    } catch (err) {
+      console.error("Submit marks failed", err);
+      alert("Failed to submit marks");
+    }
   };
 
   const handleCancel = () => {
@@ -85,7 +95,7 @@ function EnterMarks() {
           >
             <option value="">Select Student</option>
             {students.map((stu) => (
-              <option key={stu._id} value={stu.name}>
+              <option key={stu._id} value={stu._id}>
                 {stu.name}
               </option>
             ))}

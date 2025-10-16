@@ -1,16 +1,18 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Container, Row, Col, Button, Card, Form } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./AllStudents.css";
 import { FaUserPlus } from 'react-icons/fa';
 import empIcon from "../images/teachers-icon.png";
 import AddStudent from './AddStudent';
-import axios from "axios";
+// no axios needed; list is driven from localStorage per requirement
 
 function AllStudents() {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [students, setStudents] = useState([]);
+  const [removedIds, setRemovedIds] = useState([]); // soft-deleted ids for this view
+  const [search, setSearch] = useState("");
 
   const handleAddStudent = () => {
     setShowAddStudent(true);
@@ -20,23 +22,41 @@ function AllStudents() {
     setShowAddStudent(false);
   };
 
+  // Load list from localStorage; remains empty until added via form submit
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/api/students");
-        // Optional: sort by class then by name
-        const sortedStudents = res.data.sort((a, b) => {
-          if (a.class < b.class) return -1;
-          if (a.class > b.class) return 1;
-          return a.name.localeCompare(b.name);
-        });
-        setStudents(sortedStudents);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchStudents();
-  }, []);
+    const stored = JSON.parse(localStorage.getItem("ui_students") || "[]");
+    setStudents(stored);
+  }, [showAddStudent]);
+
+  const visibleStudents = useMemo(() => {
+    const filtered = students.filter((s) => !removedIds.includes(s._id));
+    if (!search.trim()) return filtered;
+    const q = search.toLowerCase();
+    return filtered.filter(
+      (s) =>
+        s.name?.toLowerCase().includes(q) ||
+        s.regNo?.toLowerCase().includes(q) ||
+        s.class?.toLowerCase().includes(q)
+    );
+  }, [students, removedIds, search]);
+
+  const handleSoftDelete = (id) => {
+    if (!window.confirm("Hide this student from the list? (Not deleted from DB)")) return;
+    setRemovedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const handleView = (student) => {
+    setShowAddStudent(true);
+    // open AddStudent in view mode by encoding selection in sessionStorage
+    sessionStorage.setItem("studentFormMode", "view");
+    sessionStorage.setItem("studentFormId", student._id);
+  };
+
+  const handleEdit = (student) => {
+    setShowAddStudent(true);
+    sessionStorage.setItem("studentFormMode", "edit");
+    sessionStorage.setItem("studentFormId", student._id);
+  };
 
   return (
     <Container fluid className="p-4 bg-light min-vh-100">
@@ -51,6 +71,8 @@ function AllStudents() {
                 placeholder="Search"
                 className="rounded-pill px-3"
                 style={{ maxWidth: "200px", borderColor: "#dc3545" }}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
               <Button
                 variant="danger"
@@ -64,7 +86,7 @@ function AllStudents() {
 
           {/* Students Cards */}
           <Row className="g-4">
-            {students.map((student) => (
+            {visibleStudents.map((student) => (
               <Col sm={6} md={4} lg={3} key={student._id}>
                 <Card className="shadow-sm border-0 text-center h-100">
                   <Card.Body className="d-flex flex-column align-items-center">
@@ -78,16 +100,17 @@ function AllStudents() {
                     <p className="mb-3">{student.class}</p> {/* Display class */}
                     <div className="mt-auto w-100">
                       <div className="d-flex justify-content-center gap-2">
-                        <Button variant="outline-secondary" size="sm" className="px-3">
+                        <Button variant="outline-secondary" size="sm" className="px-3" onClick={() => handleView(student)}>
                           View
                         </Button>
-                        <Button variant="outline-primary" size="sm" className="px-3">
+                        <Button variant="outline-primary" size="sm" className="px-3" onClick={() => handleEdit(student)}>
                           Edit
                         </Button>
                         <Button
                           variant="outline-warning"
                           size="sm"
                           className="px-3 text-dark"
+                          onClick={() => handleSoftDelete(student._id)}
                         >
                           Delete
                         </Button>

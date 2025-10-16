@@ -1,0 +1,25 @@
+# Example seed data (JSON) for admins, teachers, students, and class assignments
+{
+  "admins": [
+    { "email": "kannan.admin@gmail.com", "password": "Admin@123" },
+    { "email": "murali.admin@gmail.com", "password": "Admin@123" },
+    { "email": "devi.admin@gmail.com", "password": "Admin@123" },
+    { "email": "divya.admin@gmail.com", "password": "Admin@123" },
+    { "email": "mani.admin@gmail.com", "password": "Admin@123" }
+  ],
+  "teachers": [
+    { "name": "Rekha", "email": "rekha10C@gmail.com", "password": "Teacher@123", "assignedClass": "10C Grade" },
+    { "name": "Sujatha", "email": "sujatha10C@gmail.com", "password": "Teacher@123", "assignedClass": "10C Grade" }
+  ],
+  "students": [
+    { "name": "Rekha", "email": "rekha10C@student.com", "password": "Student@123", "class": "10C Grade", "gender": "Female" },
+    { "name": "Sujatha", "email": "sujatha10C@student.com", "password": "Student@123", "class": "10C Grade", "gender": "Female" },
+    { "name": "Yamini", "email": "yamini10C@student.com", "password": "Student@123", "class": "10C Grade", "gender": "Female" },
+    { "name": "Sindhu", "email": "sindhu10C@student.com", "password": "Student@123", "class": "10C Grade", "gender": "Female" }
+  ],
+  "classAssignments": [
+    { "classId": "10C", "className": "10C Grade", "teacherEmail": "rekha10C@gmail.com" }
+  ]
+}
+
+
