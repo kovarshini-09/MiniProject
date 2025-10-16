@@ -64,9 +64,46 @@ function AddClassPage() {
         localStorage.setItem("ui_teachers", JSON.stringify(uiTeachers));
       })
       .catch((err) => {
-        console.error(err);
-        alert("Failed to add class");
-      });
+  console.error(err);
+
+  // Detect duplicate error
+  if (err.response && err.response.status === 400) {
+    alert(`Class ${selectedClass} already exists in the database — showing locally.`);
+  } else {
+    alert("Failed to add class");
+  }
+
+  // Still add card locally for UI consistency
+  const list = JSON.parse(localStorage.getItem("ui_classes") || "[]");
+
+  // Only add if not already in ui_classes
+  const exists = list.some((c) => (c.classId || c.className) === selectedClass);
+  if (!exists) {
+    list.push({
+      classId: selectedClass,
+      classTeacher: selectedTeacher,
+      students: [],
+      subjects: ["English", "Tamil", "Math", "Science", "Social"],
+    });
+    localStorage.setItem("ui_classes", JSON.stringify(list));
+  }
+
+  // Update local teacher cache as usual
+  const uiTeachers = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
+  const classId = selectedClass;
+  uiTeachers.forEach((t) => {
+    const cls = (t.assignedClass || t.class || "").toString();
+    if (cls.toLowerCase().replace(/\s+grade\s*$/i, "") === classId.toLowerCase()) {
+      t.assignedClass = "";
+    }
+  });
+  const picked = uiTeachers.find((t) => t._id === selectedTeacher);
+  if (picked) {
+    picked.assignedClass = selectedClass;
+  }
+  localStorage.setItem("ui_teachers", JSON.stringify(uiTeachers));
+});
+
   };
 
   return (
