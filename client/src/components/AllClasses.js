@@ -64,37 +64,15 @@ function AllClasses() {
         const studentClass = normalizeClass(s.class);
         return studentClass === target || studentClass.includes(target);
       });
-      const boys = inClass.filter((s) => (s.gender || "").toLowerCase() === "male").length;
-      const girls = inClass.filter((s) => (s.gender || "").toLowerCase() === "female").length;
+      const boys = inClass.filter(
+        (s) => (s.gender || "").toLowerCase() === "male"
+      ).length;
+      const girls = inClass.filter(
+        (s) => (s.gender || "").toLowerCase() === "female"
+      ).length;
       return { boys, girls, total: inClass.length };
     };
   }, [students]);
-
-  // ✅ Delete class using _id (backend deleteClass expects _id)
-  const deleteClass = async (classObj) => {
-    if (!window.confirm(`Are you sure you want to permanently delete ${classObj.classId}?`))
-      return;
-
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/classes/${classObj._id}`, {
-        method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      if (!res.ok) throw new Error("Delete failed");
-
-      // Remove from UI
-      const updated = classes.filter((c) => c._id !== classObj._id);
-      setClasses(updated);
-      localStorage.setItem("ui_classes", JSON.stringify(updated));
-
-      alert(`Class ${classObj.classId} deleted successfully ✅`);
-    } catch (err) {
-      console.error("Error deleting class:", err);
-      alert("Failed to delete class ❌");
-    }
-  };
 
   return (
     <Container fluid className="p-4 bg-light min-vh-100">
@@ -118,7 +96,10 @@ function AllClasses() {
                 </h6>
 
                 {/* ✅ Teacher name (populated or local fallback) */}
-                <p className="mb-2" style={{ color: "#e63946", fontWeight: 600 }}>
+                <p
+                  className="mb-2"
+                  style={{ color: "#e63946", fontWeight: 600 }}
+                >
                   Class Teacher:{" "}
                   {cls.classTeacher?.name ||
                     (() => {
@@ -142,14 +123,6 @@ function AllClasses() {
                     </>
                   );
                 })()}
-
-                {/* ✅ Delete by _id */}
-                <button
-                  className="btn btn-outline-danger btn-sm mt-3"
-                  onClick={() => deleteClass(cls)}
-                >
-                  Delete (Permanent)
-                </button>
               </Card.Body>
             </Card>
           </Col>

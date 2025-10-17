@@ -1,85 +1,102 @@
-const Class = require("../models/Class");
-const Teacher = require("../models/Teacher");
+// controllers/classController.js
+const ClassModel = require("../models/Class");
 const Student = require("../models/Student");
 
-// ✅ Get all classes with teacher and students populated
-const getClasses = async (req, res) => {
+// ✅ Create new class
+exports.createClass = async (req, res) => {
   try {
-    const classes = await Class.find()
-      .populate("students")
-      .populate("classTeacher", "name"); // populate teacher name
-    res.json(classes);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching classes", error });
-  }
-};
-
-// ✅ Add a new class (with duplicate check)
-const addClass = async (req, res) => {
-  try {
-    const { classId, classTeacher, students, subjects } = req.body;
-
-    // Check for duplicate classId
-    const existingClass = await Class.findOne({ classId });
-    if (existingClass) {
-      return res.status(400).json({ message: `Class ${classId} already exists` });
-    }
-
-    // Create new class
-    const cls = new Class({ classId, classTeacher, students, subjects });
-    await cls.save();
-
-    // Link this class to teacher
-    if (classTeacher) {
-      await Teacher.findByIdAndUpdate(classTeacher, { classAssigned: cls._id });
-    }
-
-    const populatedClass = await Class.findById(cls._id).populate("classTeacher", "name");
-    res.status(201).json(populatedClass);
+    const newClass = new ClassModel(req.body);
+    await newClass.save();
+    res.status(201).json(newClass);
   } catch (err) {
-    console.error("Error adding class:", err);
-    res.status(500).json({ message: "Server error adding class", error: err.message });
+    console.error("Error creating class:", err);
+    res.status(500).json({ message: "Server error while creating class" });
   }
 };
 
-// ✅ Get latest added class
-const latestClass = async (req, res) => {
+// ✅ Get all classes
+exports.getAllClasses = async (req, res) => {
   try {
-    const cls = await Class.findOne().sort({ _id: -1 });
-    res.json(cls);
+    const classes = await ClassModel.find();
+    const today = new Date().toDateString();
+    const payload = classes.map((c) => {
+      const isToday = c.lastAttendanceDate && new Date(c.lastAttendanceDate).toDateString() === today;
+      return { ...c._doc, attendanceSubmitted: !!isToday };
+    });
+    res.json(payload);
   } catch (err) {
-    console.error("Error fetching latest class:", err);
-    res.status(500).json({ message: "Server error fetching latest class" });
+    console.error("Error fetching classes:", err);
+    res.status(500).json({ message: "Server error while fetching classes" });
   }
 };
 
-// ✅ Delete class permanently (unlink teacher & students)
-const deleteClass = async (req, res) => {
+// ✅ Get single class by ID
+exports.getClassById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const singleClass = await ClassModel.findById(req.params.id);
+    if (!singleClass) return res.status(404).json({ message: "Class not found" });
+    res.json(singleClass);
+  } catch (err) {
+    console.error("Error fetching class:", err);
+    res.status(500).json({ message: "Server error while fetching class" });
+  }
+};
 
-    const cls = await Class.findById(id);
-    if (!cls) return res.status(404).json({ message: "Class not found" });
-
-    // Unlink teacher
-    if (cls.classTeacher) {
-      await Teacher.findByIdAndUpdate(cls.classTeacher, { $unset: { classAssigned: "" } });
-    }
-
-    // Unlink students
-    if (cls.students && cls.students.length > 0) {
-      await Student.updateMany({ _id: { $in: cls.students } }, { $unset: { classAssigned: "" } });
-    }
-
-    // Delete permanently
-    await Class.findByIdAndDelete(id);
-
-    res.json({ message: `Class ${cls.classId} deleted successfully` });
+// ✅ Delete class
+exports.deleteClass = async (req, res) => {
+  try {
+    const deleted = await ClassModel.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Class not found" });
+    res.json({ message: "Class deleted successfully" });
   } catch (err) {
     console.error("Error deleting class:", err);
-    res.status(500).json({ message: "Server error deleting class" });
+    res.status(500).json({ message: "Server error while deleting class" });
   }
-  
 };
 
-module.exports = { getClasses, addClass, latestClass, deleteClass };
+// ✅ Mark attendance submitted for a class (using MongoDB _id)
+exports.markAttendanceSubmitted = async (req, res) => {
+  try {
+    const { classId } = req.body; // classId = MongoDB _id
+    if (!classId) return res.status(400).json({ message: "Class ID required" });
+
+    // ✅ Find by _id
+    const classDoc = await ClassModel.findById(classId);
+    if (!classDoc)
+      return res.status(404).json({ message: "Class not found for ID " + classId });
+
+    const today = new Date().toISOString().split("T")[0];
+
+    // ✅ Prevent duplicate attendance
+    if (classDoc.lastAttendanceDate === today) {
+      return res.status(400).json({ message: "Attendance already marked for today." });
+    }
+
+    classDoc.lastAttendanceDate = today;
+    classDoc.attendanceSubmitted = true;
+    await classDoc.save();
+
+    // ✅ Update all students in that class
+    await Student.updateMany(
+      { classId: classId },
+      { $set: { attendancePercentage: 100 } }
+    );
+
+    res.json({ message: `Attendance marked successfully for ${classDoc.className}` });
+  } catch (err) {
+    console.error("Error marking attendance:", err);
+    res.status(500).json({ message: "Internal Server Error while marking attendance" });
+  }
+};
+
+// ✅ (Optional) Get teacher attendance summary
+exports.getTeacherAttendanceSummary = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const classes = await ClassModel.find({ assignedTeacher: teacherId });
+    res.json(classes);
+  } catch (err) {
+    console.error("Error fetching teacher attendance summary:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

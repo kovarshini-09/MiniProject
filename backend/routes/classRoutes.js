@@ -1,10 +1,24 @@
 const express = require("express");
-const { getClasses, addClass, latestClass, deleteClass } = require("../controllers/classController");
 const router = express.Router();
+const {
+  createClass,
+  getAllClasses,
+  getClassById,
+  deleteClass,
+  markAttendanceSubmitted,
+  getTeacherAttendanceSummary,
+} = require("../controllers/classController");
 
-router.get("/", getClasses);
-router.post("/", addClass);
-router.get("/latest", latestClass);
-router.delete("/:id", deleteClass); // ✅ added
+// Routes
+router.post("/create", createClass);
+router.get("/", getAllClasses);
+router.get("/:id", getClassById);
+router.delete("/:id", deleteClass);
+
+// ✅ Attendance (via body)
+router.post("/markAttendance", markAttendanceSubmitted);
+
+// ✅ Teacher summary
+router.get("/teacher/:teacherId/attendance", getTeacherAttendanceSummary);
 
 module.exports = router;

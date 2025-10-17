@@ -1,288 +1,136 @@
-// // // routes/attendance.js
-// // const express = require("express");
-// // const router = express.Router();
-// // const Student = require("../models/Student");
-
-// // // ✅ Add or update attendance for a specific class and date
-// // router.post("/update", async (req, res) => {
-// //   try {
-// //     const { class: className, date } = req.body; // frontend sends "class"
-
-// //     // ✅ Validation
-// //     if (!className || !date) {
-// //       return res.status(400).json({ message: "Class and date are required fields." });
-// //     }
-
-// //     // ✅ Find students in the selected class (partial + case-insensitive match)
-// //     const students = await Student.find({
-// //       class: { $regex: new RegExp(className, "i") },
-// //     });
-
-// //     if (!students.length) {
-// //       return res
-// //         .status(404)
-// //         .json({ message: `No students found for class ${className}` });
-// //     }
-
-// //     // ✅ Update attendance for each student (avoid duplicates)
-// //     for (const student of students) {
-// //       if (!student.attendance) student.attendance = [];
-
-// //       const alreadyMarked = student.attendance.some(
-// //         (entry) => entry.date === date
-// //       );
-
-// //       if (!alreadyMarked) {
-// //         student.attendance.push({ date, present: true });
-
-// //         // ✅ Attendance percentage tracking
-// //         student.presentDays = (student.presentDays || 0) + 1;
-// //         student.totalDays = student.totalDays || 100;
-// //         const percentage = ((student.presentDays / student.totalDays) * 100).toFixed(1);
-// //         student.attendancePercentage = `${percentage}%`;
-
-// //         await student.save();
-// //       }
-// //     }
-
-// //     res.status(200).json({
-// //       message: `✅ Attendance recorded for class ${className} on ${date}`,
-// //       totalStudents: students.length,
-// //     });
-// //   } catch (error) {
-// //     console.error("❌ Error updating attendance:", error);
-// //     res
-// //       .status(500)
-// //       .json({ message: "Server error while updating attendance" });
-// //   }
-// // });
-
-// // // ✅ Route to get current student's updated info (used in StudentDashboard.jsx)
-// // router.get("/me/:studentId", async (req, res) => {
-// //   try {
-// //     const student = await Student.findById(req.params.studentId);
-// //     if (!student) return res.status(404).json({ message: "Student not found" });
-// //     res.json(student);
-// //   } catch (err) {
-// //     res.status(500).json({ message: "Error fetching student data" });
-// //   }
-// // });
-
-// // module.exports = router;
-// const express = require("express");
-// const router = express.Router();
-// const Student = require("../models/Student");
-// const auth = require("../middleware/authMiddleware");
-
-// // ✅ Add or update attendance for a specific class and date
-// // Rule: Only class teacher can submit and only once per class per date
-// router.post("/update", auth, async (req, res) => {
-//   try {
-//     const { class: className, date } = req.body; // frontend sends "class"
-
-//     // ✅ Validation
-//     if (!className || !date) {
-//       return res
-//         .status(400)
-//         .json({ message: "Class and date are required fields." });
-//     }
-
-//     // ✅ Authorization: teacher-only
-//     if (req.role !== "teacher") {
-//       return res.status(403).json({ message: "Only teachers can submit attendance" });
-//     }
-
-//     // ✅ Ensure this teacher is the assigned class teacher
-//     const normalize = (v) => (v || "").toString().trim().toLowerCase();
-//     const teacherClass = normalize(req.user?.assignedClass || req.user?.class);
-//     if (teacherClass && normalize(className) !== teacherClass) {
-//       return res.status(403).json({ message: "You are not the class teacher for this class" });
-//     }
-
-//     // ✅ Find students in the selected class (case-insensitive + partial match)
-//     const students = await Student.find({
-//       class: { $regex: new RegExp(className.trim(), "i") },
-//     });
-
-//     if (!students.length) {
-//       return res
-//         .status(404)
-//         .json({ message: `No students found for class ${className}` });
-//     }
-
-//     // ✅ Use incoming date string as-is if already formatted (dd/mm/yyyy)
-//   const formattedDate = typeof date === "string" && date.includes("/")
-//     ? date
-//     : new Date(date).toLocaleDateString("en-GB");
-
-//     // ✅ Class-level guard: allow marking once per class per date
-//     const anyAlreadyMarked = await Student.exists({
-//       class: { $regex: new RegExp(className.trim(), "i") },
-//       "attendance.date": formattedDate,
-//     });
-//     if (anyAlreadyMarked) {
-//       return res.status(409).json({ message: `Attendance for ${className} on ${formattedDate} already submitted` });
-//     }
-
-//     // ✅ Update attendance for each student
-//     for (const student of students) {
-//       if (!student.attendance) student.attendance = [];
-
-//       const alreadyMarked = student.attendance.some(
-//         (entry) => entry.date === formattedDate
-//       );
-
-//     // Record the date only once
-//     if (!alreadyMarked) {
-//       student.attendance.push({ date: formattedDate, present: true });
-//     }
-
-//     // Increment present days by 1 per submission
-//     student.presentDays = (student.presentDays || 0) + 1;
-//     student.totalDays = student.totalDays || 100;
-//     const percentage = (
-//       (student.presentDays / student.totalDays) *
-//       100
-//     ).toFixed(0);
-//     student.attendancePercentage = `${percentage}%`;
-
-//     await student.save();
-//     }
-
-//     res.status(200).json({
-//       message: `✅ Attendance recorded for class ${className} on ${formattedDate}`,
-//       totalStudents: students.length,
-//     });
-//   } catch (error) {
-//     console.error("❌ Error updating attendance:", error);
-//     res
-//       .status(500)
-//       .json({ message: "Server error while updating attendance" });
-//   }
-// });
-
-// // ✅ Route to get current student's updated info (used in StudentDashboard.jsx)
-// router.get("/me/:studentId", async (req, res) => {
-//   try {
-//     const student = await Student.findById(req.params.studentId);
-//     if (!student)
-//       return res.status(404).json({ message: "Student not found" });
-//     res.json(student);
-//   } catch (err) {
-//     res.status(500).json({ message: "Error fetching student data" });
-//   }
-// });
-
-// module.exports = router;
 const express = require("express");
 const router = express.Router();
 const Student = require("../models/Student");
+const Teacher = require("../models/Teacher");
+const Attendance = require("../models/Attendance");
+const Class = require("../models/Class");
 const auth = require("../middleware/authMiddleware");
 
-// ✅ Add or update attendance for a specific class and date
-// Rule: Only class teacher can submit and only once per class per date
+// ✅ Mark attendance (enforced by AllClasses mapping)
 router.post("/update", auth, async (req, res) => {
   try {
     const { class: className, date } = req.body;
 
-    // ✅ Validation
-    if (!className || !date) {
-      return res
-        .status(400)
-        .json({ message: "Class and date are required fields." });
+    if (!className || !date)
+      return res.status(400).json({ message: "Class and date are required." });
+
+    if (req.role !== "teacher")
+      return res.status(403).json({ message: "Only teachers can mark attendance." });
+
+    // Look up class by its classId as displayed in AllClasses (accept '9C' or '9C Grade')
+    const classRegex = new RegExp(`^${className}(?:\\s*grade)?$`, "i");
+    let cls = await Class.findOne({ classId: { $regex: classRegex } })
+      .populate("classTeacher")
+      .populate("students");
+    // Fallback if schema used a different field name
+    if (!cls) {
+      cls = await Class.findOne({ className: { $regex: classRegex } })
+        .populate("classTeacher")
+        .populate("students");
     }
 
-    // ✅ Authorization: only teacher can submit
-    if (req.role !== "teacher") {
-      return res
-        .status(403)
-        .json({ message: "Only teachers can submit attendance" });
+    if (!cls)
+      return res.status(404).json({ message: `Class ${className} not found` });
+
+    // Verify the requester is the class teacher of this class
+    if (!cls.classTeacher || cls.classTeacher._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "You are not the class teacher for this class." });
     }
 
-    // ✅ Ensure this teacher is the assigned class teacher
-    const normalize = (v) => (v || "").toString().trim().toLowerCase();
-    const teacherClass = normalize(req.user?.assignedClass || req.user?.class);
-
-    if (teacherClass && normalize(className) !== teacherClass) {
-      return res
-        .status(403)
-        .json({ message: "You are not the class teacher for this class" });
-    }
-
-    // ✅ Find students in that class (case-insensitive)
-    const students = await Student.find({
-      class: { $regex: new RegExp(className.trim(), "i") },
-    });
-
-    if (!students.length) {
-      return res
-        .status(404)
-        .json({ message: `No students found for class ${className}` });
-    }
-
-    // ✅ Normalize and format date
     const formattedDate =
       typeof date === "string" && date.includes("/")
         ? date
         : new Date(date).toLocaleDateString("en-GB");
 
-    // ✅ Prevent double submission (once per class per day)
-    const alreadySubmitted = await Student.exists({
-      class: { $regex: new RegExp(className.trim(), "i") },
-      "attendance.date": formattedDate,
+    // Prevent duplicate marking for this class and date
+    const alreadySubmitted = await Attendance.exists({
+      date: formattedDate,
+      classId: cls._id,
     });
-    if (alreadySubmitted) {
-      return res.status(409).json({
-        message: `Attendance for ${className} on ${formattedDate} already submitted`,
-      });
+
+    if (alreadySubmitted)
+      return res.status(409).json({ message: "Attendance already marked for today." });
+
+    // Determine students of this class: prefer relation; fallback to class name match
+    let studentsForClass = cls.students && cls.students.length
+      ? cls.students
+      : await Student.find({
+          class: {
+            $regex: new RegExp(`^${className}(?:\\s*grade)?$`, "i"),
+          },
+        });
+
+    // Create new attendance record with proper Class._id
+    const attendanceRecord = new Attendance({
+      classId: cls._id,
+      teacherId: req.user._id,
+      date: formattedDate,
+      studentAttendance: (studentsForClass || []).map((stu) => ({
+        studentId: stu._id,
+        status: "Present",
+      })),
+    });
+
+    await attendanceRecord.save();
+
+    // Update each student's attendance array and derived fields
+    for (const stu of studentsForClass || []) {
+      stu.attendance.push({ date: formattedDate, present: true });
+
+      // Keep presentDays/percentage fields in sync (though dashboard computes against 100)
+      stu.presentDays = stu.attendance.filter((a) => a.present).length;
+      stu.totalDays = 100; // keep stored totalDays aligned with UI expectation
+      stu.attendancePercentage = `${Math.round((stu.presentDays / 100) * 100)}%`;
+
+      await stu.save();
     }
 
-    // ✅ Update attendance for each student
-    for (const student of students) {
-      if (!student.attendance) student.attendance = [];
-
-      const alreadyMarked = student.attendance.some(
-        (entry) => entry.date === formattedDate
-      );
-
-      if (!alreadyMarked) {
-        student.attendance.push({ date: formattedDate, present: true });
-      }
-
-      student.presentDays = (student.presentDays || 0) + 1;
-      student.totalDays = student.totalDays || 100;
-      const percentage = (
-        (student.presentDays / student.totalDays) *
-        100
-      ).toFixed(0);
-      student.attendancePercentage = `${percentage}%`;
-
-      await student.save();
+    // Update class submission status for today
+    try {
+      const now = new Date();
+      // store as Date; Dashboard will interpret as 'today' only if dates match
+      cls.lastAttendanceDate = now;
+      cls.attendanceSubmitted = true;
+      await cls.save();
+    } catch (e) {
+      console.warn("Warning: failed to update class submission status", e);
     }
 
     res.status(200).json({
-      message: `✅ Attendance recorded for class ${className} on ${formattedDate}`,
-      totalStudents: students.length,
+      message: `✅ Attendance successfully marked for ${className} on ${formattedDate}`,
+      totalStudents: (studentsForClass || []).length,
     });
   } catch (error) {
-    console.error("❌ Error updating attendance:", error);
-    res.status(500).json({
-      message: "Server error while updating attendance",
-    });
+    console.error("Error updating attendance:", error);
+    res.status(500).json({ message: "Server error updating attendance" });
   }
 });
 
-// ✅ Route to get current student's updated info
+// ✅ Get individual student's attendance dynamically
 router.get("/me/:studentId", async (req, res) => {
   try {
     const student = await Student.findById(req.params.studentId);
     if (!student)
       return res.status(404).json({ message: "Student not found" });
-    res.json(student);
+
+    // ✅ Fix dashboard display: always show 100 total days
+    const totalDaysFixed = 100;
+    const presentDays = student.attendance.filter((a) => a.present).length;
+    const attendancePercentage = `${Math.round(
+      (presentDays / totalDaysFixed) * 100
+    )}%`;
+
+    // Send calculated values along with stored fields
+    res.json({
+      ...student._doc,
+      totalDays: totalDaysFixed,
+      presentDays,
+      attendancePercentage,
+    });
   } catch (err) {
+    console.error("Error fetching student data:", err);
     res.status(500).json({ message: "Error fetching student data" });
   }
 });
 
 module.exports = router;
-
