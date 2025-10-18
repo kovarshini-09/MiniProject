@@ -72,6 +72,7 @@
 const express = require("express");
 const Result = require("../models/Result");
 const Student = require("../models/Student");
+const Class = require("../models/Class");
 const auth = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -97,15 +98,16 @@ router.post("/", auth, async (req, res) => {
         .json({ message: "Only teachers can submit marks" });
     }
 
-    // ✅ Ensure this teacher is the class teacher for that student
-    const normalize = (v) => (v || "").toString().trim().toLowerCase();
-    const teacherClass = normalize(req.user?.assignedClass || req.user?.class);
-    const studentClass = normalize(student.class);
-
-    if (teacherClass && teacherClass !== studentClass) {
-      return res
-        .status(403)
-        .json({ message: "You are not this class's teacher" });
+    // ✅ Ensure this teacher is the class teacher as per Class collection
+    // Normalize student's class by stripping trailing 'grade'
+    const normalize = (v) => (v || "").toString().trim().replace(/\s*grade\s*$/i, "");
+    const studentClassKey = normalize(student.class);
+    const classDoc = await Class.findOne({ classId: new RegExp(`^${studentClassKey}$`, "i") });
+    if (!classDoc) {
+      return res.status(404).json({ message: `Class ${studentClassKey} not found` });
+    }
+    if (!classDoc.classTeacher || classDoc.classTeacher.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "You are not this class's teacher" });
     }
 
     // ✅ Compute totals

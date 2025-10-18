@@ -19,6 +19,7 @@ function StaffDashboard() {
 
   const [staffData, setStaffData] = useState({
     name: "",
+    subject: "",
     role: "",
     totalDays: 90,
     presentDays: 81,
@@ -42,6 +43,7 @@ function StaffDashboard() {
         setStaffData(prev => ({
           ...prev,
           name: res.data.name,
+          subject: res.data.subject || "",
           role: res.data.role || "Teacher"
         }));
       } catch (err) {
@@ -138,7 +140,7 @@ function StaffDashboard() {
                   </Col>
                   <Col xs={12} sm={10} className="text-center text-sm-start">
                     <h4 className="fw-bold mb-0">{staffData.name || "Teacher Name"}</h4>
-                    <p className="text-muted mb-0">{staffData.role || "Job Role"}</p>
+                    <p className="text-muted mb-0">{staffData.subject || staffData.role || "Subject"}</p>
                   </Col>
                 </Row>
               </Card>

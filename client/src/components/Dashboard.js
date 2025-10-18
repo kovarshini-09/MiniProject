@@ -123,6 +123,7 @@ import icon1 from "../images/teachers-icon.png";
 const Dashboard = () => {
   const [date, setDate] = useState(new Date());
   const [classes, setClasses] = useState([]);
+  const [students, setStudents] = useState([]);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -136,13 +137,46 @@ const Dashboard = () => {
     fetchClasses();
   }, []);
 
+  // Fetch all students for counting per-class totals
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("http://localhost:5000/api/admin/students", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        setStudents(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Error fetching students:", err);
+        const cached = JSON.parse(localStorage.getItem("ui_students") || "[]");
+        setStudents(Array.isArray(cached) ? cached : []);
+      }
+    };
+    fetchStudents();
+  }, []);
+
+  const normalizeClass = (value) => (value || "").toString().toLowerCase().replace(/\s+grade\s*$/, "").trim();
+
   // ✅ Constant student & teacher numbers
   const totalStudents = 60;
   const totalTeachers = 19;
 
-  // ✅ Calculate student attendance % (100 if any attendance submitted)
-  const studentPercent = classes.some((cls) => cls.attendanceSubmitted) ? 100 : 0;
-  const teacherPercent = 100; // Teachers always 100%
+  // Build per-class counts for today using class.attendanceSubmitted and student list
+  const perClass = classes.map((cls) => {
+    const cid = cls.classId || cls.className || "";
+    const inClass = students.filter((s) => normalizeClass(s.class) === normalizeClass(cid));
+    const total = inClass.length || 10; // fallback to 10 if not found
+    const present = cls.attendanceSubmitted ? total : 0;
+    const absent = Math.max(total - present, 0);
+    return { id: cid, present, absent, total };
+  });
+
+  const todayPresent = perClass.reduce((sum, c) => sum + c.present, 0);
+  const todayTotal = perClass.reduce((sum, c) => sum + c.total, 0) || totalStudents;
+  const todayAbsent = Math.max(todayTotal - todayPresent, 0);
+
+  const studentPercent = todayTotal ? Math.round((todayPresent / todayTotal) * 100) : 0;
+  const teacherPercent = 100; // shown as 100% in design
 
   return (
     <Container fluid className="p-4 bg-light min-vh-100">
@@ -188,19 +222,44 @@ const Dashboard = () => {
             </Col>
           </Row>
 
+          {/* Today's Attendance (All Classes) */}
           <Card className="border rounded shadow-sm p-3 mb-3">
-            <p className="fw-semibold mb-1">Attendance Summary</p>
-            {classes.map((cls) => (
-              <div key={cls._id} className="mb-2">
-                <p className="mb-1">{cls.classId}</p>
-                <ProgressBar
-                  now={cls.attendanceSubmitted ? 100 : 0}
-                  label={cls.attendanceSubmitted ? "100%" : "0%"}
-                  variant={cls.attendanceSubmitted ? "success" : "secondary"}
-                  style={{ height: "1rem", borderRadius: "10px" }}
-                />
-              </div>
-            ))}
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <p className="fw-semibold mb-0">Today's Attendance (All Classes)</p>
+              <p className="mb-0"><span className="text-muted">Total</span> <span className="fw-bold">{todayTotal}</span></p>
+            </div>
+            <Row>
+              <Col xs={4} className="text-start">
+                <div className="text-success">Present</div>
+                <div className="fs-5 fw-bold text-success">{todayPresent}</div>
+              </Col>
+              <Col xs={4} className="text-start">
+                <div className="text-danger">Absent</div>
+                <div className="fs-5 fw-bold text-danger">{todayAbsent}</div>
+              </Col>
+              <Col xs={4} className="text-end d-none d-sm-block">
+                {/* total already shown on right in header */}
+              </Col>
+            </Row>
+          </Card>
+
+          {/* All Classes - Today's Attendance */}
+          <Card className="border rounded shadow-sm p-3">
+            <p className="fw-semibold mb-3">All Classes - Today's Attendance</p>
+            <Row className="g-3">
+              {perClass.map((c) => (
+                <Col sm={6} md={4} key={c.id}>
+                  <Card className="border-0 shadow-sm p-3">
+                    <div className="fw-bold mb-2">{c.id}</div>
+                    <div className="small">
+                      <div className="d-flex justify-content-between"><span>Present</span><span className="text-success fw-semibold">{c.present}</span></div>
+                      <div className="d-flex justify-content-between"><span>Absent</span><span className="text-danger fw-semibold">{c.absent}</span></div>
+                      <div className="d-flex justify-content-between"><span>Total</span><span className="fw-semibold">{c.total}</span></div>
+                    </div>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
           </Card>
         </Col>
 

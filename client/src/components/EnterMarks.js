@@ -236,12 +236,25 @@ function EnterMarks() {
     fetchStudents();
   }, []);
 
+  const gradeOf = (m) => {
+    const n = Number(m) || 0;
+    if (n === 100) return "O";
+    if (n >= 90) return "A+";
+    if (n >= 80) return "A";
+    if (n >= 70) return "B+";
+    if (n >= 60) return "B";
+    if (n >= 50) return "C";
+    return "D";
+  };
+
   const handleMarksChange = (index, field, value) => {
     const newMarks = [...marks];
     if (field === "marks") {
       const numValue = parseInt(value, 10);
       if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-        newMarks[index][field] = numValue;
+        newMarks[index].marks = numValue;
+        // Auto-calc grade when marks entered
+        newMarks[index].grade = gradeOf(numValue);
       }
     } else {
       newMarks[index][field] = value;
@@ -270,9 +283,8 @@ function EnterMarks() {
       );
 
       toast.success(res.data.message || "Marks submitted successfully!", { theme: "colored" });
-      setMarks(initialMarksData);
-      setSelectedStudent("");
-      setSelectedClass("");
+      // Clear only marks and grades; keep selected student and class
+      setMarks(initialMarksData.map((m) => ({ ...m, marks: "", grade: "" })));
     } catch (err) {
       console.error("Submit marks failed", err);
       if (err.response?.data?.message) {

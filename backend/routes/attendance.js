@@ -9,7 +9,7 @@ const auth = require("../middleware/authMiddleware");
 // ✅ Mark attendance (enforced by AllClasses mapping)
 router.post("/update", auth, async (req, res) => {
   try {
-    const { class: className, date } = req.body;
+    const { class: className, date, absentIds } = req.body;
 
     if (!className || !date)
       return res.status(400).json({ message: "Class and date are required." });
@@ -60,14 +60,16 @@ router.post("/update", auth, async (req, res) => {
           },
         });
 
-    // Create new attendance record with proper Class._id
+    const absentSet = new Set((Array.isArray(absentIds) ? absentIds : []).map((x) => x.toString()));
+
+    // Create new attendance record with proper Class._id and statuses
     const attendanceRecord = new Attendance({
       classId: cls._id,
       teacherId: req.user._id,
       date: formattedDate,
       studentAttendance: (studentsForClass || []).map((stu) => ({
         studentId: stu._id,
-        status: "Present",
+        status: absentSet.has(stu._id.toString()) ? "Absent" : "Present",
       })),
     });
 
@@ -75,7 +77,8 @@ router.post("/update", auth, async (req, res) => {
 
     // Update each student's attendance array and derived fields
     for (const stu of studentsForClass || []) {
-      stu.attendance.push({ date: formattedDate, present: true });
+      const isPresent = !absentSet.has(stu._id.toString());
+      stu.attendance.push({ date: formattedDate, present: isPresent });
 
       // Keep presentDays/percentage fields in sync (though dashboard computes against 100)
       stu.presentDays = stu.attendance.filter((a) => a.present).length;

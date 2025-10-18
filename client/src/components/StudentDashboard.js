@@ -29,6 +29,8 @@ function StudentDashboard() {
   const [loadingHomework, setLoadingHomework] = useState(false);
   const [results, setResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
+  const [viewMode, setViewMode] = useState("table"); // 'table' | 'subject'
+  const [selectedExamIndex, setSelectedExamIndex] = useState(0);
 
   // Upload state
   const [dragActive, setDragActive] = useState(false);
@@ -175,47 +177,46 @@ function StudentDashboard() {
 
   // Upload action - will send files + metadata to backend, with token if exists
   const handleUpload = async (e, homeworkId) => {
-  e.preventDefault();
-  if (!filesToUpload.length) {
-    alert("⚠️ Please select at least one file before uploading.");
-    return;
-  }
+    e.preventDefault();
+    if (!filesToUpload.length) {
+      alert("⚠️ Please select at least one file before uploading.");
+      return;
+    }
 
-  const token = localStorage.getItem("token");
-  const formData = new FormData();
+    const token = localStorage.getItem("token");
+    const formData = new FormData();
 
-  // ✅ Allow all file types (append one by one)
-  filesToUpload.forEach((file) => formData.append("file", file));
+    // ✅ Allow all file types (append one by one)
+    filesToUpload.forEach((file) => formData.append("file", file));
 
-  // ✅ Include additional info
-  formData.append("homeworkId", homeworkId || "");
-  formData.append("studentName", studentData?.name || "Unknown Student");
-  formData.append("className", studentData?.class || "Unknown Class");
-  formData.append("description", uploadDescription || "");
+    // ✅ Include additional info
+    formData.append("homeworkId", homeworkId || "");
+    formData.append("studentName", studentData?.name || "Unknown Student");
+    formData.append("className", studentData?.class || "Unknown Class");
+    formData.append("description", uploadDescription || "");
 
-  try {
-    const res = await axios.post(
-      "http://localhost:5000/api/homework/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      }
-    );
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/homework/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
 
-    console.log("✅ Upload Response:", res.data);
-    alert("✅ File(s) uploaded successfully!");
-  } catch (err) {
-    console.error("❌ Upload failed:", err);
-    alert("✅ File(s) uploaded successfully!"); // always shows success as per your requirement
-  } finally {
-    // ✅ Keep uploaded files visible
-    setUploadDescription("");
-  }
-};
-
+      console.log("✅ Upload Response:", res.data);
+      alert("✅ File(s) uploaded successfully!");
+    } catch (err) {
+      console.error("❌ Upload failed:", err);
+      alert("✅ File(s) uploaded successfully!"); // always shows success as per your requirement
+    } finally {
+      // ✅ Keep uploaded files visible
+      setUploadDescription("");
+    }
+  };
 
   // small inline styles to match screenshot exactly in the homework area
   const styles = {
@@ -531,54 +532,86 @@ function StudentDashboard() {
                 </div>
               )}
 
-               {/* Exam Result area with button to reveal marks */}
-               <Card className="shadow-sm border rounded p-4 mt-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="fw-bold mb-0" style={{ color: "#e63946" }}>Exam Result</h5>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => setShowResults((s) => !s)}
-                  >
-                    {showResults ? "Hide Results" : "View Results"}
-                  </button>
+              {/* Exam Result area with button to reveal marks */}
+              <Card className="shadow-sm border rounded p-4 mt-4">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <div>
+                    <h5 className="fw-bold mb-0" style={{ color: "#e63946" }}>Exam Result</h5>
+                    <div className="text-muted" style={{ fontSize: 13 }}>
+                      {studentData.name || "Student"} • {studentData.class || "Class"} Grade
+                    </div>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button className={`btn btn-sm ${viewMode === 'table' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => setViewMode('table')}>Table</button>
+                    <button className={`btn btn-sm ${viewMode === 'subject' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => setViewMode('subject')}>Subject-wise</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => setShowResults((s) => !s)}>
+                      {showResults ? 'Hide Results' : 'View Results'}
+                    </button>
+                  </div>
                 </div>
+
                 {!showResults ? (
                   <div className="border p-3 text-muted">Tap "View Results" to see your marks.</div>
                 ) : results.length === 0 ? (
                   <div className="border p-3 text-muted">No marks uploaded yet.</div>
                 ) : (
-                  <div className="table-responsive">
-                    <table className="table table-bordered text-center small-text">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Exam</th>
-                          <th>Tamil</th>
-                          <th>English</th>
-                          <th>Maths</th>
-                          <th>Science</th>
-                          <th>Social</th>
-                          <th>Total</th>
-                          <th>%</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {results.map((r, i) => (
-                          <tr key={i}>
-                            <td>{r.exam}</td>
-                            <td>{r.marks?.Tamil ?? "-"}</td>
-                            <td>{r.marks?.English ?? "-"}</td>
-                            <td>{r.marks?.Maths ?? r.marks?.Math ?? "-"}</td>
-                            <td>{r.marks?.Science ?? "-"}</td>
-                            <td>{r.marks?.Social ?? "-"}</td>
-                            <td>{r.total}</td>
-                            <td>{r.percentage}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  (() => {
+                    const r = results[Math.min(selectedExamIndex, results.length - 1)] || results[0];
+                    const subjects = ["English", "Tamil", "Maths", "Science", "Social"]; // display order like screenshot
+                    const getMark = (subj) => (r?.marks?.[subj] ?? (subj === 'Maths' ? r?.marks?.Math : undefined));
+                    const gradeOf = (m) => {
+                      const n = Number(m) || 0;
+                      if (n >= 90) return "A+";
+                      if (n >= 80) return "A";
+                      if (n >= 70) return "B+";
+                      if (n >= 60) return "B";
+                      if (n >= 50) return "C";
+                      return "D";
+                    };
+                    const passOf = (m) => (Number(m) >= 35 ? "Pass" : "Fail");
+                    const total = subjects.reduce((sum, s) => sum + (Number(getMark(s)) || 0), 0);
+                    return (
+                      <div className="table-responsive">
+                        <table className="table table-bordered text-center small-text align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th style={{ width: '35%' }}>Subject</th>
+                              <th style={{ width: '20%' }}>Marks</th>
+                              <th style={{ width: '20%' }}>Grade</th>
+                              <th style={{ width: '25%' }}>Pass/Fail</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {subjects.map((s, idx) => {
+                              const m = getMark(s);
+                              return (
+                                <tr key={idx}>
+                                  <td className="text-start">{s}</td>
+                                  <td>{m ?? '-'}</td>
+                                  <td>{m != null ? gradeOf(m) : '-'}</td>
+                                  <td>
+                                    {m != null ? (
+                                      <span className={`badge ${Number(m) >= 35 ? 'bg-success' : 'bg-danger'}`}>{passOf(m)}</span>
+                                    ) : (
+                                      '-'
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            <tr>
+                              <td className="fw-bold text-start">Total</td>
+                              <td className="fw-bold">{total}</td>
+                              <td colSpan={2}></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()
                 )}
-              </Card> 
+              </Card>
+
             </div>
           </Col>
 

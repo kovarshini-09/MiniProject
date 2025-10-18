@@ -24,7 +24,7 @@
 
 .custom-card {
   border-radius: 15px;
-  width: 560px;
+  width: 640px;
   max-width: 95%;
   border: 1px solid #eaeaea;
   padding: 30px;
@@ -117,4 +117,58 @@
 /* Calendar popper z-index */
 .react-datepicker-popper {
   z-index: 2000;
+}
+
+/* Students grid box overrides */
+.students-grid {
+  border: 2px solid #ff6b6b;
+  border-radius: 8px;
+  padding: 12px;
+  height: auto;
+  max-height: 320px; /* keep box neat like screenshot */
+  overflow-y: auto;
+}
+
+/* If red-box class is reused, ensure height isn't fixed for this container */
+.students-grid.red-box {
+  height: auto;
+  padding: 12px; /* ensure internal padding kept */
+  text-align: left;
+}
+
+/* Spacing for items when using Bootstrap grid */
+.students-grid .col-sm-6 {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* Keep checkbox/label aligned */
+.students-grid label {
+  font-size: 0.95rem;
+}
+
+/* Two-column layout exactly like reference */
+.students-columns {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.students-col {
+  flex: 1;
+}
+
+.student-item {
+  margin: 10px 0;
+}
+
+.student-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
 }

@@ -9,6 +9,19 @@ function AllClasses() {
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
 
+  // Fixed mapping of classId -> class teacher name
+  const teacherByClass = useMemo(
+    () => ({
+      "9A": "Nandhini",
+      "9B": "Rekha",
+      "9C": "Suresh",
+      "10A": "Mani",
+      "10B": "Meena",
+      "10C": "Anitha",
+    }),
+    []
+  );
+
   // ✅ Fetch classes from backend (with teacher populated)
   const fetchClasses = async () => {
     try {
@@ -101,15 +114,20 @@ function AllClasses() {
                   style={{ color: "#e63946", fontWeight: 600 }}
                 >
                   Class Teacher:{" "}
-                  {cls.classTeacher?.name ||
-                    (() => {
-                      const t = teachers.find(
-                        (x) =>
-                          normalizeClass(x.assignedClass || x.class) ===
-                          normalizeClass(cls.classId || cls.className)
-                      );
-                      return t ? t.name : "—";
-                    })()}
+                  {(() => {
+                    const cid = (cls.classId || cls.className || "").toString().trim();
+                    // Prefer fixed mapping first
+                    if (teacherByClass[cid]) return teacherByClass[cid];
+                    // Then any populated teacher name
+                    if (cls.classTeacher?.name) return cls.classTeacher.name;
+                    // Finally, local teachers cache fallback
+                    const t = teachers.find(
+                      (x) =>
+                        normalizeClass(x.assignedClass || x.class) ===
+                        normalizeClass(cid)
+                    );
+                    return t ? t.name : "—";
+                  })()}
                 </p>
 
                 {/* ✅ Student counts */}
