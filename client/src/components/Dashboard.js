@@ -124,6 +124,7 @@ const Dashboard = () => {
   const [date, setDate] = useState(new Date());
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
+  const [todaySummary, setTodaySummary] = useState([]);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -155,25 +156,47 @@ const Dashboard = () => {
     fetchStudents();
   }, []);
 
+  // Fetch today's attendance summary (present/absent per class)
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/attendance/summary/today");
+        setTodaySummary(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Error fetching today summary:", err);
+        setTodaySummary([]);
+      }
+    };
+    fetchSummary();
+  }, []);
+
   const normalizeClass = (value) => (value || "").toString().toLowerCase().replace(/\s+grade\s*$/, "").trim();
 
   // ✅ Constant student & teacher numbers
   const totalStudents = 60;
   const totalTeachers = 19;
 
-  // Build per-class counts for today using class.attendanceSubmitted and student list
+  // Build per-class from API summary; if no record for a class, show 0/0/0
+  const summaryMap = (todaySummary || []).reduce((acc, r) => {
+    const key = normalizeClass(r.classId || "");
+    acc[key] = {
+      present: Number(r.present) || 0,
+      absent: Number(r.absent) || 0,
+      total: Number(r.total) || 0,
+    };
+    return acc;
+  }, {});
+
   const perClass = classes.map((cls) => {
     const cid = cls.classId || cls.className || "";
-    const inClass = students.filter((s) => normalizeClass(s.class) === normalizeClass(cid));
-    const total = inClass.length || 10; // fallback to 10 if not found
-    const present = cls.attendanceSubmitted ? total : 0;
-    const absent = Math.max(total - present, 0);
-    return { id: cid, present, absent, total };
+    const key = normalizeClass(cid);
+    const rec = summaryMap[key] || { present: 0, absent: 0, total: 0 };
+    return { id: cid, present: rec.present, absent: rec.absent, total: rec.total };
   });
 
   const todayPresent = perClass.reduce((sum, c) => sum + c.present, 0);
-  const todayTotal = perClass.reduce((sum, c) => sum + c.total, 0) || totalStudents;
-  const todayAbsent = Math.max(todayTotal - todayPresent, 0);
+  const todayTotal = perClass.reduce((sum, c) => sum + c.total, 0);
+  const todayAbsent = perClass.reduce((sum, c) => sum + c.absent, 0);
 
   const studentPercent = todayTotal ? Math.round((todayPresent / todayTotal) * 100) : 0;
   const teacherPercent = 100; // shown as 100% in design

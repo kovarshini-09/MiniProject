@@ -136,4 +136,24 @@ router.get("/me/:studentId", async (req, res) => {
   }
 });
 
+// ✅ Today's per-class attendance summary
+router.get("/summary/today", async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString("en-GB");
+    const records = await Attendance.find({ date: today }).populate("classId");
+
+    const summary = records.map((r) => {
+      const present = (r.studentAttendance || []).filter((a) => a.status === "Present").length;
+      const absent = (r.studentAttendance || []).filter((a) => a.status === "Absent").length;
+      const id = (r.classId && (r.classId.classId || r.classId.className)) || (r.classId?._id?.toString() || "");
+      return { classId: id, present, absent, total: present + absent };
+    });
+
+    res.json(summary);
+  } catch (err) {
+    console.error("Error fetching today summary:", err);
+    res.status(500).json({ message: "Error fetching today summary" });
+  }
+});
+
 module.exports = router;

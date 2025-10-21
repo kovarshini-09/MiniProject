@@ -141,9 +141,9 @@ function Attendance() {
                               <label className="student-check">
                                 <input
                                   type="checkbox"
-                                  checked={!!absent[id]}
+                                  checked={!absent[id]}
                                   onChange={(e) =>
-                                    setAbsent((prev) => ({ ...prev, [id]: e.target.checked }))
+                                    setAbsent((prev) => ({ ...prev, [id]: !e.target.checked }))
                                   }
                                 />
                                 <span>{stu.name}</span>
@@ -160,9 +160,9 @@ function Attendance() {
                               <label className="student-check">
                                 <input
                                   type="checkbox"
-                                  checked={!!absent[id]}
+                                  checked={!absent[id]}
                                   onChange={(e) =>
-                                    setAbsent((prev) => ({ ...prev, [id]: e.target.checked }))
+                                    setAbsent((prev) => ({ ...prev, [id]: !e.target.checked }))
                                   }
                                 />
                                 <span>{stu.name}</span>
