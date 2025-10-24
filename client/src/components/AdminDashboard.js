@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, Outlet } from "react-router-dom";   
+import React, { useState, useEffect } from "react";
+import { Link, Outlet, useNavigate } from "react-router-dom";   
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./SideBar.css"
 
@@ -13,6 +13,15 @@ import logoImage from "../images/logo.png";
 
 function AdminDashboard() {
   const [openMenu, setOpenMenu] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const role = localStorage.getItem("role");
+    if (role !== "admin") {
+      alert("You're not authorized as admin");
+      navigate("/");
+    }
+  }, [navigate]);
 
   const toggleMenu = (menu) => {
     setOpenMenu(openMenu === menu ? null : menu);

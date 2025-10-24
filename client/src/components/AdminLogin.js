@@ -8,7 +8,6 @@ function AdminLoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");      
   const [password, setPassword] = useState(""); 
-  const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,8 +22,8 @@ function AdminLoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        // ✅ Display backend message (Access denied or invalid credentials)
-        setError(data.message || "Login failed");
+        // Alert for non-admin or invalid attempts
+        alert("You're not authorized as admin");
         return;
       }
 
@@ -32,10 +31,15 @@ function AdminLoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
 
+      // Defensive: if backend returns a non-admin role on this endpoint
+      if (data.role !== "admin") {
+        alert("You're not authorized as admin");
+        return;
+      }
+
       navigate("/dashboard"); // navigate only if login successful
     } catch (err) {
       console.error(err);
-      setError("Server error");
     }
   };
 
@@ -50,7 +54,7 @@ function AdminLoginPage() {
         <div className="col-md-5">
           <div className="card border-0 shadow p-4">
             <h2 className="text-center fw-semibold mb-4">Admin Login</h2>
-            {error && <div className="alert alert-danger">{error}</div>}
+            {/* Inline error removed: alerts are shown instead */}
             <form onSubmit={handleLogin}>
               <div className="mb-3">
                 <input
