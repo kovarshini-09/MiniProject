@@ -108,6 +108,7 @@ function AssignHomework() {
               >
                 <option value="">Select Subject</option>
                 <option value="Math">Math</option>
+                <option value="Math">Tamil</option>
                 <option value="Science">Science</option>
                 <option value="English">English</option>
                 <option value="Social">Social</option>

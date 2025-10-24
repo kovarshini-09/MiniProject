@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const Admin = require('./models/Admin');
 const Student = require('./models/Student');
 const Teacher = require('./models/Teacher');
+const Class = require('./models/Class');
 const connectDB = require('./config/db');
 
 connectDB();
@@ -181,7 +182,59 @@ const seedDB = async () => {
       teacherIndex++;
     }
 
-    console.log('✅ Database seeded successfully with 5 admins, 60 students, and 19 teachers (all with unique father & mother names)!');
+    // ---------- Class Teachers & Classes (idempotent upsert) ----------
+    const map = [
+      { classId: '9A', teacherName: 'Nandhini' },
+      { classId: '9B', teacherName: 'Rekha' },
+      { classId: '9C', teacherName: 'Suresh' },
+      { classId: '10A', teacherName: 'Mani' },
+      { classId: '10B', teacherName: 'Meena' },
+      { classId: '10C', teacherName: 'Anitha' },
+    ];
+
+    const normClass = (v = '') => v.toString().toLowerCase().replace(/\s*grade\s*$/i, '').trim();
+
+    for (const entry of map) {
+      // find teacher by name (case-insensitive, first token compare as fallback)
+      const teachers = await Teacher.find();
+      const match = teachers.find((t) => {
+        const full = (t.name || '').trim().toLowerCase();
+        const first = full.split(/\s+/)[0] || full;
+        return first === entry.teacherName.toLowerCase();
+      });
+
+      if (!match) {
+        console.warn(`⚠️  Seed warning: teacher '${entry.teacherName}' not found; skipping class '${entry.classId}' mapping.`);
+        continue;
+      }
+
+      // ensure assignedClass on teacher
+      if (match.assignedClass !== entry.classId) {
+        match.assignedClass = entry.classId;
+        await match.save();
+      }
+
+      // upsert Class document and attach students
+      let cls = await Class.findOne({ classId: entry.classId });
+      if (!cls) {
+        cls = new Class({ classId: entry.classId, classTeacher: match._id, students: [], subjects: ['English','Tamil','Maths','Science','Social'] });
+      } else {
+        cls.classTeacher = match._id;
+        if (!Array.isArray(cls.students)) cls.students = [];
+        if (!Array.isArray(cls.subjects) || !cls.subjects.length) cls.subjects = ['English','Tamil','Maths','Science','Social'];
+      }
+
+      // attach students whose Student.class matches the classId (accept '9A' or '9A Grade')
+      const allStudents = await Student.find();
+      const target = normClass(entry.classId);
+      const inClass = allStudents.filter((s) => normClass(s.class) === target);
+      cls.students = inClass.map((s) => s._id);
+      await cls.save();
+
+      console.log(`✅ Linked class '${entry.classId}' to teacher '${match.name}' with ${inClass.length} students.`);
+    }
+
+    console.log('✅ Database seeded successfully with 5 admins, 60 students, 19 teachers, and 6 class mappings.');
     process.exit();
 
   } catch (err) {

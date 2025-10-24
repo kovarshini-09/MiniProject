@@ -42,13 +42,13 @@ router.post("/update", auth, async (req, res) => {
         ? date
         : new Date(date).toLocaleDateString("en-GB");
 
-    // Prevent duplicate marking for this class and date
-    const alreadySubmitted = await Attendance.exists({
+    // Allow at most one submission per class per day
+    const submissionsToday = await Attendance.countDocuments({
       date: formattedDate,
       classId: cls._id,
     });
 
-    if (alreadySubmitted)
+    if (submissionsToday >= 1)
       return res.status(409).json({ message: "Attendance already marked for today." });
 
     // Determine students of this class: prefer relation; fallback to class name match
@@ -116,14 +116,24 @@ router.get("/me/:studentId", async (req, res) => {
     if (!student)
       return res.status(404).json({ message: "Student not found" });
 
-    // ✅ Fix dashboard display: always show 100 total days
+    // ✅ Always show 100 total days (UI expectation)
     const totalDaysFixed = 100;
-    const presentDays = student.attendance.filter((a) => a.present).length;
-    const attendancePercentage = `${Math.round(
-      (presentDays / totalDaysFixed) * 100
-    )}%`;
 
-    // Send calculated values along with stored fields
+    // ✅ Derive presentDays from Attendance collection to include all historical data
+    const records = await Attendance.find({
+      "studentAttendance.studentId": student._id,
+    }).select("studentAttendance");
+
+    let presentDays = 0;
+    for (const r of records) {
+      const rec = (r.studentAttendance || []).find(
+        (a) => a.studentId.toString() === student._id.toString()
+      );
+      if (rec && rec.status === "Present") presentDays += 1;
+    }
+
+    const attendancePercentage = `${Math.round((presentDays / totalDaysFixed) * 100)}%`;
+
     res.json({
       ...student._doc,
       totalDays: totalDaysFixed,
