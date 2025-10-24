@@ -143,6 +143,37 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
+// ✅ List students who already have results for a given exam (and optional class)
+router.get("/submitted", auth, async (req, res) => {
+  try {
+    const { exam, classId } = req.query;
+    if (!exam) {
+      return res.status(400).json({ message: "exam query param is required" });
+    }
+
+    // Build query
+    const query = { exam };
+    if (classId) {
+      // Match class id case-insensitively similar to POST route
+      const normalize = (v) => (v || "").toString().trim().replace(/\s*grade\s*$/i, "");
+      const classKey = normalize(classId);
+      query.classId = new RegExp(`^${classKey}$`, "i");
+    }
+
+    const results = await Result.find(query, { studentRegNo: 1, _id: 0 });
+    const regNos = results.map((r) => r.studentRegNo);
+
+    // Map regNos to student _ids to simplify frontend filtering
+    const students = await Student.find({ regNo: { $in: regNos } }, { _id: 1 });
+    const submittedIds = students.map((s) => s._id.toString());
+
+    res.json({ submittedIds });
+  } catch (err) {
+    console.error("❌ Error fetching submitted students:", err);
+    res.status(500).json({ message: "Server error while fetching submitted students" });
+  }
+});
+
 // ✅ Student fetches their results
 router.get("/me", auth, async (req, res) => {
   try {
