@@ -1,7 +1,7 @@
 // StudentDashboard.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Container, Row, Col, Card, Spinner, Button } from "react-bootstrap";
+import { Container, Row, Col, Card, Spinner } from "react-bootstrap";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -29,7 +29,6 @@ function StudentDashboard() {
   const [loadingHomework, setLoadingHomework] = useState(false);
   const [results, setResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
-  const [viewMode, setViewMode] = useState("table"); // 'table' | 'subject'
   const [selectedExamIndex, setSelectedExamIndex] = useState(0);
 
   // Upload state
@@ -542,8 +541,6 @@ function StudentDashboard() {
                     </div>
                   </div>
                   <div className="d-flex gap-2">
-                    <button className={`btn btn-sm ${viewMode === 'table' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => setViewMode('table')}>Table</button>
-                    <button className={`btn btn-sm ${viewMode === 'subject' ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => setViewMode('subject')}>Subject-wise</button>
                     <button className="btn btn-danger btn-sm" onClick={() => setShowResults((s) => !s)}>
                       {showResults ? 'Hide Results' : 'View Results'}
                     </button>

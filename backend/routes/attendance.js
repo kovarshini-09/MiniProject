@@ -119,18 +119,30 @@ router.get("/me/:studentId", async (req, res) => {
     // ✅ Always show 100 total days (UI expectation)
     const totalDaysFixed = 100;
 
-    // ✅ Derive presentDays from Attendance collection to include all historical data
+    // ✅ Count presents from Attendance collection
     const records = await Attendance.find({
       "studentAttendance.studentId": student._id,
     }).select("studentAttendance");
 
-    let presentDays = 0;
+    let presentFromAttendance = 0;
     for (const r of records) {
       const rec = (r.studentAttendance || []).find(
         (a) => a.studentId.toString() === student._id.toString()
       );
-      if (rec && rec.status === "Present") presentDays += 1;
+      if (rec && rec.status === "Present") presentFromAttendance += 1;
     }
+
+    // ✅ Also count from student's own attendance array
+    const presentFromStudentArray = Array.isArray(student.attendance)
+      ? student.attendance.filter((a) => a && a.present).length
+      : 0;
+
+    // ✅ Choose the max to avoid accidental resets
+    const presentDays = Math.max(
+      Number.isFinite(presentFromAttendance) ? presentFromAttendance : 0,
+      Number.isFinite(presentFromStudentArray) ? presentFromStudentArray : 0,
+      Number.isFinite(student.presentDays) ? student.presentDays : 0
+    );
 
     const attendancePercentage = `${Math.round((presentDays / totalDaysFixed) * 100)}%`;
 
