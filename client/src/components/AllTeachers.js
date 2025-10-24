@@ -2,41 +2,45 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Container, Row, Col, Button, Card, Form } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./AllStudents.css";
-import { FaUserPlus } from "react-icons/fa";
 import empIcon from "../images/teachers-icon.png";
-import AddTeacher from "./AddTeachers";
 // no axios needed for listing; drive from localStorage per requirement
 import { useNavigate } from "react-router-dom";
+// no backend fetch here; page should be empty initially and populate only after add
 
 function AllTeachers() {
-  const [showAddTeacher, setShowAddTeacher] = useState(false);
   const [teachers, setTeachers] = useState([]);
   const [removedIds, setRemovedIds] = useState([]); // soft-deleted in view only
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
-  const handleAddTeacher = () => {
-    setShowAddTeacher(true);
-  };
-
-  const handleBack = () => {
-    setShowAddTeacher(false);
-  };
-
+  // Load cumulative teachers from localStorage on mount (initially empty if none)
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
-    setTeachers(stored);
-  }, [showAddTeacher]);
+    const arr = Array.isArray(stored) ? stored : [];
+    const seen = new Set();
+    const unique = [];
+    for (const t of arr) {
+      const email = (t.email || "").trim().toLowerCase();
+      const key = email || `${(t.name||"").trim().toLowerCase()}|${(t.subject||"").trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(t);
+    }
+    if (unique.length !== arr.length) {
+      localStorage.setItem("ui_teachers", JSON.stringify(unique));
+    }
+    setTeachers(unique);
+  }, []);
 
   const handleView = (teacher) => {
-    setShowAddTeacher(true);
     sessionStorage.setItem("teacherFormMode", "view");
     sessionStorage.setItem("teacherFormId", teacher._id);
+    navigate("/dashboard/teachers/add");
   };
   const handleEdit = (teacher) => {
-    setShowAddTeacher(true);
     sessionStorage.setItem("teacherFormMode", "edit");
     sessionStorage.setItem("teacherFormId", teacher._id);
+    navigate("/dashboard/teachers/add");
   };
   const handleSoftDelete = (id) => {
     if (!window.confirm("Hide this teacher from the list? (Not deleted from DB)")) return;
@@ -57,7 +61,6 @@ function AllTeachers() {
 
   return (
     <Container fluid className="p-4 bg-light min-vh-100">
-      {!showAddTeacher ? (
         <>
           {/* Page Header */}
           <div className="d-flex justify-content-between align-items-center mb-4">
@@ -127,28 +130,8 @@ function AllTeachers() {
                 </Card>
               </Col>
             ))}
-
-            {/* Add New Teacher Card */}
-            <Col sm={6} md={4} lg={3}>
-              <Card
-                className="shadow-sm border p-3 text-center d-flex align-items-center justify-content-center h-100"
-                onClick={handleAddTeacher}
-                style={{ cursor: "pointer" }}
-              >
-                <FaUserPlus size={40} className="mb-2 text-dark" />
-                <h6 className="fw-semibold text-dark">Add New</h6>
-              </Card>
-            </Col>
           </Row>
         </>
-      ) : (
-        <>
-          <Button variant="primary" className="mb-4" onClick={handleBack}>
-            Back
-          </Button>
-          <AddTeacher />
-        </>
-      )}
     </Container>
   );
 }

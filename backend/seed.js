@@ -121,6 +121,71 @@ const seedDB = async () => {
       }
     }
 
+    // ---------- Post-process: backfill missing fields for specific 10th-grade students only ----------
+    try {
+      const allStudentsForFix = await Student.find();
+      const isTenth = (v = "") => /^10[ABC]/i.test((v || "").toString());
+      const toLower = (s = "") => s.toString().trim().toLowerCase();
+      const hash = (s = "") => {
+        let h = 0; for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; } return h;
+      };
+      const pickFrom = (arr, key) => arr[hash(key) % arr.length];
+
+      // Curated sample pools to assign meaningful defaults (deterministic per name)
+      const sampleFathers = [
+        'Rajendran','Kannan','Subramani','Venkatesh','Ramasamy','Krishnan','Sathish','Balaji','Ganesh','Vijayan',
+        'Prabhu','Shanmugam','Rajkumar','Sekar','Vimal','Harish','Natarajan','Raghunandan','Kalyan','Praveen'
+      ];
+      const sampleMothers = [
+        'Seetha','Lakshmi','Meena','Radha','Uma','Vimala','Geetha','Janaki','Anitha','Kavitha',
+        'Latha','Jayanthi','Sangeetha','Chithra','Hema','Aishwarya','Sujatha','Kalpana','Poornima','Vasanthi'
+      ];
+      const sampleIdMarks = [
+        'Mole on left cheek','Scar on forehead','Birthmark on neck','Mole on right hand','Freckles on nose',
+        'Small scar on chin','Mole near left eye','Scar on right knee','Birthmark on right shoulder','Mole on chin'
+      ];
+      const samplePrevSchools = [
+        "St. Mary's School, Coimbatore","Kendriya Vidyalaya, Trichy","Saraswathi Vidyalaya, Salem",
+        'St. Joseph School, Madurai','Government Girls School, Erode','Loyola School, Coimbatore',
+        'Vidhya Mandir, Trichy','Central School, Madurai','Government Boys School, Salem','Sacred Heart School, Chennai'
+      ];
+
+      // Groups per requirement
+      const groupBasic = new Set([
+        'rahul', 'vivek', 'santosh', 'santhosh', 'rohit', 'nikhil', 'vaishnavi', 'hema', 'aishwarya', 'jyothi', 'joythi', 'pavithra',
+        'aravind', 'kavin', 'saravanan', 'murugan', 'balaji', 'bhavya', 'shalini', 'sangeetha', 'revathi', 'indhu', 'ramesh', 'rajesh', 'shankar', 'kishore', 'gokul'
+      ]);
+      const groupPlusId = new Set(['ramya']);
+      const groupFull = new Set(['rekha', 'sujatha', 'yamini', 'sindhu']);
+
+      let fixes = 0;
+      for (const s of allStudentsForFix) {
+        const nameKey = toLower(s.name || "");
+        if (!isTenth(s.class)) continue; // keep 9th grade intact
+        const needsBasic = groupBasic.has(nameKey) || groupPlusId.has(nameKey) || groupFull.has(nameKey);
+        if (!needsBasic) continue;
+
+        let changed = false;
+        if (!s.fatherName) { s.fatherName = pickFrom(sampleFathers, nameKey); changed = true; }
+        if (!s.motherName) { s.motherName = pickFrom(sampleMothers, nameKey); changed = true; }
+        if (!s.fees || typeof s.fees !== 'number' || s.fees <= 0) { s.fees = 30000; changed = true; }
+
+        if (groupPlusId.has(nameKey) || groupFull.has(nameKey)) {
+          if (!s.identificationMark) { s.identificationMark = pickFrom(sampleIdMarks, nameKey); changed = true; }
+        }
+        if (groupFull.has(nameKey)) {
+          if (!s.previousSchool) { s.previousSchool = pickFrom(samplePrevSchools, nameKey); changed = true; }
+        }
+
+        if (changed) { await s.save(); fixes++; }
+      }
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`✅ Backfilled ${fixes} student record(s) for 10th grade.`);
+      }
+    } catch (e) {
+      console.warn('⚠️  Post-seed backfill step skipped due to error:', e?.message || e);
+    }
+
     // ---------- Teachers ----------
     const teacherData = [
       {name:'Arun Kumar', subject:'Math'},
@@ -158,6 +223,28 @@ const seedDB = async () => {
       'Janaki', 'Sangeetha', 'Indira', 'Lakshmi'
     ];
 
+    // Explicit gender overrides for specific teachers
+    const genderOverrides = {
+      'arun kumar': 'Male',
+      'suresh': 'Male',
+      'karthik': 'Male',
+      'divya': 'Female',
+      'roshini': 'Female',
+      'meena': 'Female',
+      'nandhini': 'Female',
+      'ravi': 'Male',
+      'sathish': 'Male',
+      'geetha': 'Female',
+      'priya': 'Female',
+      'mani': 'Male',
+      'lakshmi': 'Female',
+      'vijay': 'Male',
+      'anitha': 'Female',
+      'hari': 'Male',
+      'balaji': 'Male',
+      'raghav': 'Male'
+    };
+
     let teacherIndex = 0;
     for (let t of teacherData) {
       const password = await bcrypt.hash(t.name.toLowerCase(), 10);
@@ -168,7 +255,7 @@ const seedDB = async () => {
         mobileNumber: '9876543210',
         subject: t.subject,
         dob: new Date(1980 + Math.floor(Math.random() * 10), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
-        gender: Math.random() > 0.5 ? 'Male' : 'Female',
+        gender: genderOverrides[t.name.toLowerCase()] || (Math.random() > 0.5 ? 'Male' : 'Female'),
         fatherName: teacherFathers[teacherIndex],
         motherName: teacherMothers[teacherIndex],
         monthlySalary: 30000 + Math.floor(Math.random() * 10000),

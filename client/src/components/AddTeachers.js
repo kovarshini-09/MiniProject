@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { Row, Col, Form, Button, Container } from "react-bootstrap";
+import { Row, Col, Form, Button, Container, Card } from "react-bootstrap";
 import axios from "axios";
 import "./EmployeeForm.css";
+import empIcon from "../images/teachers-icon.png";
+import { useNavigate } from "react-router-dom";
 
-const AddTeacher = () => {
+const AddTeacher = ({ onClose = () => {} }) => {
   const [teachers, setTeachers] = useState([]); // all teachers
   const [selectedTeacherId, setSelectedTeacherId] = useState(""); // selected teacher
   const [mode, setMode] = useState("create"); // create | view | edit
   const [teacherData, setTeacherData] = useState({}); // details of selected teacher
+  const [preview, setPreview] = useState(null); // show card preview after submit
+
+  const navigate = useNavigate();
 
   // Fetch all teachers from backend
   useEffect(() => {
@@ -90,15 +95,57 @@ const AddTeacher = () => {
           teacherData,
           { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
         )
-        .then(() => {
+        .then((res) => {
           alert("Teacher updated successfully!");
+          const updated = res?.data?.teacher || { _id: selectedTeacherId, ...teacherData };
+          // sync localStorage (fallback cache)
           const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
           const idx = list.findIndex((t) => t._id === selectedTeacherId);
-          const payload = { _id: selectedTeacherId, ...teacherData };
-          if (idx >= 0) list[idx] = payload; else list.push(payload);
+          if (idx >= 0) list[idx] = updated; else list.push(updated);
           localStorage.setItem("ui_teachers", JSON.stringify(list));
+          // update local state used by this form
+          setTeachers((prev) => {
+            const i = prev.findIndex((t) => t._id === selectedTeacherId);
+            if (i === -1) return prev;
+            const copy = prev.slice();
+            copy[i] = updated;
+            return copy;
+          });
+          setTeacherData({
+            name: updated.name || "",
+            email: updated.email || "",
+            mobileNumber: updated.mobileNumber || "",
+            subject: updated.subject || "",
+            dob: updated.dob ? String(updated.dob).substr(0, 10) : "",
+            gender: updated.gender || "",
+            fatherName: updated.fatherName || "",
+            motherName: updated.motherName || "",
+            education: updated.education || "",
+            experience: updated.experience || "",
+            monthlySalary: updated.monthlySalary || "",
+            bloodGroup: updated.bloodGroup || "",
+            address: updated.address || "",
+          });
+          sessionStorage.removeItem("teacherFormMode");
+          sessionStorage.removeItem("teacherFormId");
+          sessionStorage.setItem('teacherJustAdded','1');
+          onClose(true);
+          navigate(-1);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          // Offline/local fallback for update
+          const updated = { _id: selectedTeacherId || Date.now().toString(), ...teacherData };
+          const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
+          const idx = list.findIndex((t) => t._id === updated._id);
+          if (idx >= 0) list[idx] = updated; else list.push(updated);
+          localStorage.setItem("ui_teachers", JSON.stringify(list));
+          alert("Teacher updated locally. Backend unavailable.");
+          sessionStorage.removeItem("teacherFormMode");
+          sessionStorage.removeItem("teacherFormId");
+          sessionStorage.setItem('teacherJustAdded','1');
+          onClose(true);
+        });
     } else {
       axios
         .post("http://localhost:5000/api/admin/teachers", teacherData, {
@@ -107,11 +154,47 @@ const AddTeacher = () => {
         .then((resp) => {
           alert("Teacher added successfully!");
           const created = resp?.data?.teacher || { _id: Date.now().toString(), ...teacherData };
+          // sync fallback cache
           const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
           list.push(created);
           localStorage.setItem("ui_teachers", JSON.stringify(list));
+          // update local state and select new teacher for further edits if needed
+          setTeachers((prev) => [...prev, created]);
+          setSelectedTeacherId(created._id);
+          setMode("edit");
+          setTeacherData({
+            name: created.name || "",
+            email: created.email || "",
+            mobileNumber: created.mobileNumber || "",
+            subject: created.subject || "",
+            dob: created.dob ? String(created.dob).substr(0, 10) : "",
+            gender: created.gender || "",
+            fatherName: created.fatherName || "",
+            motherName: created.motherName || "",
+            education: created.education || "",
+            experience: created.experience || "",
+            monthlySalary: created.monthlySalary || "",
+            bloodGroup: created.bloodGroup || "",
+            address: created.address || "",
+          });
+          sessionStorage.removeItem("teacherFormMode");
+          sessionStorage.removeItem("teacherFormId");
+          sessionStorage.setItem('teacherJustAdded','1');
+          onClose(true);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          // Offline/local fallback for create
+          const created = { _id: Date.now().toString(), ...teacherData };
+          const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
+          list.push(created);
+          localStorage.setItem("ui_teachers", JSON.stringify(list));
+          alert("Teacher added locally. Backend unavailable.");
+          sessionStorage.removeItem("teacherFormMode");
+          sessionStorage.removeItem("teacherFormId");
+          sessionStorage.setItem('teacherJustAdded','1');
+          onClose(true);
+        });
     }
   };
 
@@ -323,6 +406,23 @@ const AddTeacher = () => {
           )}
         </div>
       </div>
+      {preview && (
+        <div className="mt-4">
+          <h6 className="mb-3">Preview</h6>
+          <Card className="shadow-sm border-0 text-center" style={{ maxWidth: 320 }}>
+            <Card.Body className="d-flex flex-column align-items-center">
+              <img src={empIcon} alt="teacher" className="img-fluid mb-3" style={{ maxWidth: "120px" }} />
+              <h6 className="fw-semibold mb-1">{preview.name}</h6>
+              <p className="text-muted mb-3">{preview.subject}</p>
+              <div className="d-flex justify-content-center gap-2">
+                <Button variant="outline-secondary" size="sm" className="px-3">View</Button>
+                <Button variant="outline-primary" size="sm" className="px-3">Edit</Button>
+                <Button variant="outline-warning" size="sm" className="px-3 text-dark">Delete</Button>
+              </div>
+            </Card.Body>
+          </Card>
+        </div>
+      )}
     </Container>
   );
 };
