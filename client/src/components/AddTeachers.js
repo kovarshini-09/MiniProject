@@ -6,7 +6,7 @@ import "./EmployeeForm.css";
 import empIcon from "../images/teachers-icon.png";
 import { useNavigate } from "react-router-dom";
 
-const AddTeacher = ({ onClose = () => {} }) => {
+const AddTeacher = ({ onClose = () => {}, navigateBack = true }) => {
   const [teachers, setTeachers] = useState([]); // all teachers
   const [selectedTeacherId, setSelectedTeacherId] = useState(""); // selected teacher
   const [mode, setMode] = useState("create"); // create | view | edit
@@ -97,7 +97,7 @@ const AddTeacher = ({ onClose = () => {} }) => {
         )
         .then((res) => {
           alert("Teacher updated successfully!");
-          const updated = res?.data?.teacher || { _id: selectedTeacherId, ...teacherData };
+          const updated = { ...(res?.data?.teacher || { _id: selectedTeacherId, ...teacherData }), _ui: true };
           // sync localStorage (fallback cache)
           const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
           const idx = list.findIndex((t) => t._id === selectedTeacherId);
@@ -130,12 +130,12 @@ const AddTeacher = ({ onClose = () => {} }) => {
           sessionStorage.removeItem("teacherFormId");
           sessionStorage.setItem('teacherJustAdded','1');
           onClose(true);
-          navigate(-1);
+          if (navigateBack) navigate(-1);
         })
         .catch((err) => {
           console.error(err);
           // Offline/local fallback for update
-          const updated = { _id: selectedTeacherId || Date.now().toString(), ...teacherData };
+          const updated = { _id: selectedTeacherId || Date.now().toString(), ...teacherData, _ui: true };
           const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
           const idx = list.findIndex((t) => t._id === updated._id);
           if (idx >= 0) list[idx] = updated; else list.push(updated);
@@ -153,7 +153,7 @@ const AddTeacher = ({ onClose = () => {} }) => {
         })
         .then((resp) => {
           alert("Teacher added successfully!");
-          const created = resp?.data?.teacher || { _id: Date.now().toString(), ...teacherData };
+          const created = { ...(resp?.data?.teacher || { _id: Date.now().toString(), ...teacherData }), _ui: true };
           // sync fallback cache
           const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
           list.push(created);
@@ -185,7 +185,7 @@ const AddTeacher = ({ onClose = () => {} }) => {
         .catch((err) => {
           console.error(err);
           // Offline/local fallback for create
-          const created = { _id: Date.now().toString(), ...teacherData };
+          const created = { _id: Date.now().toString(), ...teacherData, _ui: true };
           const list = JSON.parse(localStorage.getItem("ui_teachers") || "[]");
           list.push(created);
           localStorage.setItem("ui_teachers", JSON.stringify(list));
